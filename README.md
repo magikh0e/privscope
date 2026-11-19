@@ -11,6 +11,8 @@ no exploitation and makes no changes to the target.
 It is split in two so the part that runs on the host stays small, read-only and quiet, while
 all the judgment lives offline where it can be versioned, re-run and diffed.
 
+Write-up: <https://magikh0e.pl/pubCode/privscope.html>
+
 | Part | Where it runs | What it does |
 |---|---|---|
 | **Windows collector** | On the target: `collector/Invoke-PrivscopeCollector.ps1` | Read-only PowerShell (5.1 and 7). Dumps configuration *facts* to JSON. |
@@ -149,3 +151,7 @@ tests/lab/                                misconfigured container + end-to-end c
 - [ ] Linux: POSIX ACLs (getfacl), writable sudo-run scripts' interpreters, kernel/package
       versions for known local-privilege-escalation CVEs.
 - [ ] Patch/driver/kernel rules fed by cvescope.
+
+## License
+
+GPL-3.0-or-later. See [LICENSE](LICENSE).
