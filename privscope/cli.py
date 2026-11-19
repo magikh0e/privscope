@@ -9,6 +9,7 @@ from pathlib import Path
 
 from . import __version__
 from .engine import SEVERITIES, SEV_RANK, RuleError, analyze, diff_reports, load_rules
+from .acl import doc_platform
 from .html_report import render_diff_html, render_html
 from .report import render_diff_markdown, render_diff_text, render_markdown, render_text
 
@@ -109,6 +110,14 @@ def build_parser() -> argparse.ArgumentParser:
     r = sub.add_parser("rules", help="list the rules")
     r.add_argument("--rules", metavar="DIR", help="rule folder (default: the bundled rules)")
     r.add_argument("--format", choices=["text", "json"], default="text")
+
+    k = sub.add_parser("attack", help="generate a gated detection-test script from the findings "
+                                      "(AUTHORIZED testing only; see REDTEAM.md)")
+    k.add_argument("collection", help="a collection from the same host you will test")
+    k.add_argument("--rules", metavar="DIR", help="rule folder (default: the bundled rules)")
+    k.add_argument("--perspective", choices=["auto", "principal", "standard-user"], default="auto")
+    k.add_argument("--min-severity", choices=SEVERITIES, default="info")
+    k.add_argument("-o", "--output", metavar="FILE", help="write the script here (default: stdout)")
     return ap
 
 
@@ -132,6 +141,25 @@ def main(argv=None) -> int:
                     print(f"{rule['platform']:<8} {rule['id']:<12} {rule['severity']:<9} "
                           f"{rule['category']:<12} {rule['title']}")
                 print(f"\n{len(rules)} rules")
+            return EXIT_OK
+
+        if args.cmd == "attack":
+            from .redteam import build_script
+            doc = load_collection(args.collection)
+            report = analyze(doc, rules, args.perspective, args.min_severity)
+            plat = doc_platform(doc)
+            script = build_script(doc, report, plat)
+            n = len(report["findings"])
+            print(f"privscope: {n} finding(s); "
+                  f"review the script, then run it only on an authorized host.", file=sys.stderr)
+            if args.output:
+                # keep LF for bash, CRLF for PowerShell; never let the platform retranslate
+                nl = "\r\n" if plat == "windows" else "\n"
+                with open(args.output, "w", encoding="utf-8", newline="") as fh:
+                    fh.write(script.replace("\n", nl))
+                print(f"[privscope] wrote {args.output}", file=sys.stderr)
+            else:
+                sys.stdout.write(script)
             return EXIT_OK
 
         color = _use_color(args.color, bool(args.output))

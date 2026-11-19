@@ -15,7 +15,7 @@ dependencies = []
 privscope = "privscope.cli:main"
 
 [tool.setuptools]
-packages = ["privscope"]
+packages = ["privscope", "privscope.redteam"]
 
 [tool.setuptools.package-data]
 privscope = ["rules/*/*.json"]

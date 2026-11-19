@@ -21,10 +21,16 @@ Write-up: <https://magikh0e.pl/pubCode/privscope.html>
 
 The browser version of the analyzer will run the same rule files.
 
+A third, opt-in piece — `privscope attack` — turns findings into a gated **detection-test
+script** for validating host-based IDS/IPS. The collector and analyzer never touch it and
+stay read-only; see [REDTEAM.md](REDTEAM.md).
+
 ## Scope & authorized use
 
 For auditing systems **you own or are explicitly authorized to assess**: your own machines,
-a home lab, or a sanctioned engagement. The project ships no exploitation code.
+a home lab, or a sanctioned engagement. The collector and analyzer never exploit anything.
+The optional `privscope attack` detection-test packs (REDTEAM.md) do run real techniques, so
+they are for authorized testing only and are gated behind an on-host authorization marker.
 
 ## Quick start
 
@@ -54,6 +60,7 @@ python -m privscope analyze collection.json --format html -o report.html
 python -m privscope analyze collection.json --format md -o report.md
 python -m privscope diff before.json after.json --format html -o diff.html
 python -m privscope rules
+python -m privscope attack collection.json -o pack.sh   # gated detection-test pack (REDTEAM.md)
 ```
 
 Or `pip install .` for a `privscope` command.
@@ -138,6 +145,8 @@ schema/privscope-report.schema.json       Windows collection format (JSON Schema
 schema/privscope-linux.schema.json        Linux collection format
 privscope/                                Python analyzer; rules/<platform>/ holds the rules
 RULES.md                                  rule format + evaluation contract
+REDTEAM.md                                the opt-in detection-test packs
+privscope/redteam/                        'attack' pack generator (never run on the target)
 tests/conformance/                        shared cases for both engines
 tests/lab/                                misconfigured container + end-to-end check
 ```
