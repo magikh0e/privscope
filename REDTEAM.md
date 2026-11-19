@@ -33,6 +33,12 @@ Set-Content C:\privscope-authorized.txt "engagement X, authorized <date>"
 .\pack.ps1 -Execute
 ```
 
+**Run the pack as the unprivileged account whose findings you're testing, not as root or
+full admin.** The point is to escalate *up* from that account; as root or SYSTEM there's
+nothing to prove, and the detection you care about never gets exercised. Collect high (root
+sees the most) but test low. The one step that needs elevation is placing the authorization
+marker once; the tests themselves run as the low-privilege user.
+
 ## The gate
 
 A generated script is **dry-run by default**: with no arguments it lists its tests and
