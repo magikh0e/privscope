@@ -155,6 +155,37 @@ function Expand-ImagePath {
     return $p
 }
 
+# Resolve a registry-hook value (a DLL or exe reference) to a filesystem path. A bare module
+# name resolves against System32 then the Windows dir; a command keeps only its program. The
+# analyzer then checks that path's ACL, so unresolved/protected targets simply produce no
+# finding. Kind is 'exe' or 'dll'.
+function Resolve-HookModule {
+    param([string]$Raw, [string]$Kind)
+    if ([string]::IsNullOrWhiteSpace($Raw)) { return $null }
+    $p = Expand-ImagePath $Raw
+    if (-not $p) { return $null }
+    if ($Kind -eq 'exe') {
+        $p = Resolve-ImagePath $p
+        # drop switch-only / junk tokens that aren't a program path
+        if ([string]::IsNullOrWhiteSpace($p)) { return $null }
+        if ($p -notmatch '\\' -and $p -notmatch '^[\w.\-]+\.(exe|com|scr|bat|cmd|pif)$') { return $null }
+    } else {
+        $p = $p.Trim('"')
+    }
+    if ([string]::IsNullOrWhiteSpace($p)) { return $null }
+    if (Test-RootedPath $p) { return $p }
+    if ($p -match '^[\\/]') { return $null }          # not a real target (e.g. a bare switch)
+    if ($p -notmatch '[\\/]') {
+        if ($p -notmatch '\.[A-Za-z0-9_]+$') { $p = $p + $(if ($Kind -eq 'dll') { '.dll' } else { '.exe' }) }
+        $c1 = Join-Path "$env:SystemRoot\System32" $p
+        $c2 = Join-Path $env:SystemRoot $p
+        if (Test-Path -LiteralPath $c1) { return $c1 }
+        if (Test-Path -LiteralPath $c2) { return $c2 }
+        return $null                                   # bare name resolves nowhere: leave unresolved
+    }
+    return $p
+}
+
 function Get-ParentDir {
     param([string]$Path)
     if (-not (Test-RootedPath $Path)) { return $null }
@@ -360,6 +391,102 @@ function Get-AutorunFacts {
     $out
 }
 
+# Registry execution-hook points: record where a hook is set, its value, and the program it
+# resolves to (added to the ACL table). Read-only. The analyzer flags a hook whose target a
+# non-admin can overwrite or create. Writable-key detection (setting a hook from scratch) is a
+# separate, later facts section; this one is value + target-file only.
+function Get-ExecHookFacts {
+    $script:HookOut = New-Object System.Collections.ArrayList
+    function HookAdd($type, $location, $name, $value, $kind, $extra) {
+        $img = Resolve-HookModule $value $kind
+        Add-AclFactWithAncestors $img
+        $rec = [ordered]@{
+            type = $type; location = $location; name = $name; value = $value
+            image_path = $img; image_dir = (Get-ParentDir $img)
+        }
+        if ($extra) { foreach ($k in $extra.Keys) { $rec[$k] = $extra[$k] } }
+        [void]$script:HookOut.Add([PSCustomObject]$rec)
+    }
+
+    # Image File Execution Options: a Debugger value hijacks the named program.
+    foreach ($base in @('HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options',
+                        'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows NT\CurrentVersion\Image File Execution Options')) {
+        if (-not (Test-Path $base)) { continue }
+        Get-ChildItem $base -ErrorAction SilentlyContinue | ForEach-Object {
+            $dbg = (Get-ItemProperty $_.PSPath -Name Debugger -ErrorAction SilentlyContinue).Debugger
+            if ($dbg) { HookAdd 'ifeo_debugger' "IFEO\$($_.PSChildName)\Debugger" $_.PSChildName $dbg 'exe' $null }
+        }
+    }
+    $spe = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SilentProcessExit'
+    if (Test-Path $spe) {
+        Get-ChildItem $spe -ErrorAction SilentlyContinue | ForEach-Object {
+            $mp = (Get-ItemProperty $_.PSPath -Name MonitorProcess -ErrorAction SilentlyContinue).MonitorProcess
+            if ($mp) { HookAdd 'silent_process_exit' "SilentProcessExit\$($_.PSChildName)\MonitorProcess" $_.PSChildName $mp 'exe' $null }
+        }
+    }
+
+    # AppInit_DLLs: loaded into every process that links user32 (when LoadAppInit_DLLs is on).
+    foreach ($base in @('HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows',
+                        'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows NT\CurrentVersion\Windows')) {
+        $p = Get-ItemProperty $base -ErrorAction SilentlyContinue
+        if (-not $p -or -not $p.AppInit_DLLs) { continue }
+        $enabled = [bool]$p.LoadAppInit_DLLs
+        $signed = [bool]$p.RequireSignedAppInit_DLLs
+        $sep = if ($p.AppInit_DLLs -match ',') { ',' } else { ' ' }
+        foreach ($d in (($p.AppInit_DLLs -split $sep) | ForEach-Object { $_.Trim() } | Where-Object { $_ })) {
+            HookAdd 'appinit_dll' "$base\AppInit_DLLs" $d $d 'dll' @{ enabled = $enabled; signed_required = $signed }
+        }
+    }
+
+    # AppCertDlls: loaded into processes that call CreateProcess and friends.
+    $acd = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCertDlls'
+    if (Test-Path $acd) {
+        $p = Get-ItemProperty $acd -ErrorAction SilentlyContinue
+        if ($p) { foreach ($prop in $p.PSObject.Properties) { if ($prop.Name -like 'PS*') { continue }; HookAdd 'appcert_dll' "AppCertDlls\$($prop.Name)" $prop.Name ([string]$prop.Value) 'dll' $null } }
+    }
+
+    # Winlogon: Userinit/Shell/Taskman run at logon.
+    $wp = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -ErrorAction SilentlyContinue
+    if ($wp) {
+        foreach ($u in (($wp.Userinit -split ',') | ForEach-Object { $_.Trim() } | Where-Object { $_ })) { HookAdd 'winlogon_userinit' 'Winlogon\Userinit' 'Userinit' $u 'exe' $null }
+        if ($wp.Shell) { HookAdd 'winlogon_shell' 'Winlogon\Shell' 'Shell' ([string]$wp.Shell) 'exe' $null }
+        if ($wp.Taskman) { HookAdd 'winlogon_taskman' 'Winlogon\Taskman' 'Taskman' ([string]$wp.Taskman) 'exe' $null }
+    }
+
+    # Active Setup: StubPath runs once per user at logon.
+    foreach ($base in @('HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components',
+                        'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Active Setup\Installed Components')) {
+        if (-not (Test-Path $base)) { continue }
+        Get-ChildItem $base -ErrorAction SilentlyContinue | ForEach-Object {
+            $sp = (Get-ItemProperty $_.PSPath -Name StubPath -ErrorAction SilentlyContinue).StubPath
+            if ($sp) { HookAdd 'active_setup' "ActiveSetup\$($_.PSChildName)\StubPath" $_.PSChildName ([string]$sp) 'exe' $null }
+        }
+    }
+
+    # LSA packages: loaded into LSASS as SYSTEM.
+    $lp = Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa' -ErrorAction SilentlyContinue
+    if ($lp) {
+        foreach ($vn in @('Security Packages', 'Authentication Packages', 'Notification Packages')) {
+            foreach ($m in @($lp.$vn)) { if ($m -and $m -ne '""') { HookAdd 'lsa_package' "Lsa\$vn" $m $m 'dll' $null } }
+        }
+    }
+
+    # Print monitors: Driver DLL loaded by the spooler (SYSTEM).
+    $pm = 'HKLM:\SYSTEM\CurrentControlSet\Control\Print\Monitors'
+    if (Test-Path $pm) {
+        Get-ChildItem $pm -ErrorAction SilentlyContinue | ForEach-Object {
+            $drv = (Get-ItemProperty $_.PSPath -Name Driver -ErrorAction SilentlyContinue).Driver
+            if ($drv) { HookAdd 'print_monitor' "Monitors\$($_.PSChildName)\Driver" $_.PSChildName ([string]$drv) 'dll' $null }
+        }
+    }
+
+    # Netsh helper DLLs: loaded when netsh runs.
+    $ns = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Netsh' -ErrorAction SilentlyContinue
+    if ($ns) { foreach ($prop in $ns.PSObject.Properties) { if ($prop.Name -like 'PS*') { continue }; HookAdd 'netsh_helper' "Netsh\$($prop.Name)" $prop.Name ([string]$prop.Value) 'dll' $null } }
+
+    $script:HookOut
+}
+
 function Get-PolicyFacts {
     function RegVal($path, $name) {
         try { return (Get-ItemProperty -Path $path -Name $name -ErrorAction Stop).$name } catch { return $null }
@@ -480,6 +607,7 @@ $report = [ordered]@{
         services             = @(Get-ServiceFacts)
         scheduled_tasks      = @(Get-ScheduledTaskFacts)
         autoruns             = @(Get-AutorunFacts)
+        exec_hooks           = @(Get-ExecHookFacts)
         path_dirs            = @(Get-PathDirFacts)
         policies             = Get-PolicyFacts
         credential_artifacts = @(Get-CredentialArtifactFacts)

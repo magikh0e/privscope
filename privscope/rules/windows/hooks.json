@@ -1,0 +1,113 @@
+{
+  "rules": [
+    {
+      "id": "PS-HOOK-001",
+      "title": "Image File Execution Options hook runs a program that can be overwritten",
+      "category": "hooks",
+      "severity": "high",
+      "select": "facts.exec_hooks[*]",
+      "where": {
+        "all": [
+          { "field": "type", "in": ["ifeo_debugger", "silent_process_exit"] },
+          { "any": [ { "writable": "image_path" }, { "creatable_file": "image_path" } ] }
+        ]
+      },
+      "subject": "{location} -> {image_path}",
+      "evidence": { "hook": "location", "for program": "name", "runs": "image_path", "value": "value" },
+      "why": "An Image File Execution Options Debugger (or a SilentProcessExit monitor process) runs the named program whenever the target launches, in the launching process's context, which for a service or an elevated program is SYSTEM or admin. Anyone who can overwrite the program it points at gets that context.",
+      "fix": "Delete the Debugger value under HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\<program> (or the SilentProcessExit MonitorProcess), unless it's a deliberate debugging setup. Restrict the referenced program so only Administrators and SYSTEM can write it.",
+      "refs": ["https://attack.mitre.org/techniques/T1546/012/"]
+    },
+    {
+      "id": "PS-HOOK-002",
+      "title": "AppInit_DLLs loads a DLL that can be overwritten",
+      "category": "hooks",
+      "severity": "high",
+      "select": "facts.exec_hooks[*]",
+      "where": {
+        "all": [
+          { "field": "type", "eq": "appinit_dll" },
+          { "field": "enabled", "eq": true },
+          { "writable": "image_path" }
+        ]
+      },
+      "subject": "{location} -> {image_path}",
+      "evidence": { "hook": "location", "dll": "image_path", "value": "value", "signed required": "signed_required" },
+      "why": "AppInit_DLLs are loaded into almost every process that uses user32.dll, elevated ones included, and LoadAppInit_DLLs is on. Anyone who can overwrite a listed DLL runs code inside those processes.",
+      "fix": "Clear AppInit_DLLs, or set LoadAppInit_DLLs to 0, under HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows (and the Wow6432Node copy). If it's needed, restrict the DLL to Administrators and SYSTEM and turn on RequireSignedAppInit_DLLs. AppInit_DLLs is disabled under Secure Boot.",
+      "refs": ["https://attack.mitre.org/techniques/T1546/010/"]
+    },
+    {
+      "id": "PS-HOOK-003",
+      "title": "AppCertDlls loads a DLL that can be overwritten",
+      "category": "hooks",
+      "severity": "high",
+      "select": "facts.exec_hooks[*]",
+      "where": {
+        "all": [
+          { "field": "type", "eq": "appcert_dll" },
+          { "writable": "image_path" }
+        ]
+      },
+      "subject": "{location} -> {image_path}",
+      "evidence": { "hook": "location", "dll": "image_path", "value": "value" },
+      "why": "AppCertDlls are loaded into every process that calls CreateProcess and related APIs, which is nearly all of them. A writable one runs inside those processes, including ones running as SYSTEM.",
+      "fix": "Remove the value from HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\AppCertDlls, or restrict the DLL to Administrators and SYSTEM. AppCertDlls is legitimately used by almost nothing.",
+      "refs": ["https://attack.mitre.org/techniques/T1546/009/"]
+    },
+    {
+      "id": "PS-HOOK-004",
+      "title": "Winlogon logon hook runs a program that can be overwritten",
+      "category": "hooks",
+      "severity": "high",
+      "select": "facts.exec_hooks[*]",
+      "where": {
+        "all": [
+          { "field": "type", "in": ["winlogon_userinit", "winlogon_shell", "winlogon_taskman"] },
+          { "any": [ { "writable": "image_path" }, { "creatable_file": "image_path" } ] }
+        ]
+      },
+      "subject": "{location} -> {image_path}",
+      "evidence": { "hook": "location", "runs": "image_path", "value": "value" },
+      "why": "Winlogon runs Userinit, Shell and Taskman at logon, in the session of whoever logs on, administrators included. Anyone who can overwrite one of these programs runs code as the next user to log in.",
+      "fix": "Restore the default values (Userinit = C:\\Windows\\system32\\userinit.exe, Shell = explorer.exe) under HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon, and restrict any referenced program to Administrators and SYSTEM.",
+      "refs": ["https://attack.mitre.org/techniques/T1547/004/"]
+    },
+    {
+      "id": "PS-HOOK-005",
+      "title": "Active Setup StubPath runs a program that can be overwritten",
+      "category": "hooks",
+      "severity": "medium",
+      "select": "facts.exec_hooks[*]",
+      "where": {
+        "all": [
+          { "field": "type", "eq": "active_setup" },
+          { "any": [ { "writable": "image_path" }, { "creatable_file": "image_path" } ] }
+        ]
+      },
+      "subject": "{location} -> {image_path}",
+      "evidence": { "hook": "location", "component": "name", "runs": "image_path", "value": "value" },
+      "why": "Active Setup runs a component's StubPath once per user, early in each user's first logon. Anyone who can overwrite the program runs code in the context of every user who hasn't run that component yet.",
+      "fix": "Restrict the referenced program to Administrators and SYSTEM, or remove the component under HKLM\\SOFTWARE\\Microsoft\\Active Setup\\Installed Components if it isn't needed.",
+      "refs": ["https://attack.mitre.org/techniques/T1547/014/"]
+    },
+    {
+      "id": "PS-HOOK-006",
+      "title": "A SYSTEM-loaded module registration points at a writable DLL",
+      "category": "hooks",
+      "severity": "high",
+      "select": "facts.exec_hooks[*]",
+      "where": {
+        "all": [
+          { "field": "type", "in": ["lsa_package", "print_monitor", "netsh_helper"] },
+          { "writable": "image_path" }
+        ]
+      },
+      "subject": "{location} -> {image_path}",
+      "evidence": { "hook": "location", "module": "name", "dll": "image_path" },
+      "why": "LSA packages load into LSASS as SYSTEM, print monitors load into the spooler as SYSTEM, and netsh helpers load when netsh runs (often from an admin script). A writable registered DLL runs in that privileged context.",
+      "fix": "Restrict the DLL to Administrators and SYSTEM, or remove the registration (LSA: HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa; monitors: ...\\Control\\Print\\Monitors; netsh: HKLM\\SOFTWARE\\Microsoft\\Netsh). These lists should only name signed, protected system modules.",
+      "refs": ["https://attack.mitre.org/techniques/T1547/002/"]
+    }
+  ]
+}

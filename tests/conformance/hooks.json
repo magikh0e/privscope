@@ -1,0 +1,57 @@
+{
+  "name": "hooks",
+  "description": "Windows registry execution-hook points, collected as a standard user. One writable target per hook type fires its rule; protected (System32 / Program Files) targets and a disabled AppInit entry must not. Windows needs no folder-traversal check, so only the target file ACLs matter.",
+  "collection": {
+    "privscope": { "tool": "privscope-collector", "platform": "windows", "version": "0.1.0", "schema_version": 1, "kind": "collection" },
+    "host": { "hostname": "WS1" },
+    "principal": {
+      "user": "LAB\\alice", "sid": "S-1-5-21-1-2-3-1001", "is_admin": false, "elevation": "standard",
+      "groups": [
+        { "sid": "S-1-1-0", "name": "Everyone" },
+        { "sid": "S-1-5-32-545", "name": "BUILTIN\\Users" },
+        { "sid": "S-1-5-11", "name": "NT AUTHORITY\\Authenticated Users" }
+      ],
+      "privileges": []
+    },
+    "facts": {
+      "exec_hooks": [
+        { "type": "ifeo_debugger", "location": "IFEO\\notepad.exe\\Debugger", "name": "notepad.exe", "value": "C:\\Tools\\dbg.exe", "image_path": "C:\\Tools\\dbg.exe", "image_dir": "C:\\Tools" },
+        { "type": "silent_process_exit", "location": "SilentProcessExit\\svc.exe\\MonitorProcess", "name": "svc.exe", "value": "C:\\Windows\\System32\\clean.exe", "image_path": "C:\\Windows\\System32\\clean.exe", "image_dir": "C:\\Windows\\System32" },
+        { "type": "appinit_dll", "location": "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\AppInit_DLLs", "name": "C:\\Tools\\inj.dll", "value": "C:\\Tools\\inj.dll", "image_path": "C:\\Tools\\inj.dll", "image_dir": "C:\\Tools", "enabled": true, "signed_required": false },
+        { "type": "appinit_dll", "location": "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\AppInit_DLLs", "name": "C:\\Tools\\off.dll", "value": "C:\\Tools\\off.dll", "image_path": "C:\\Tools\\off.dll", "image_dir": "C:\\Tools", "enabled": false, "signed_required": false },
+        { "type": "appcert_dll", "location": "AppCertDlls\\Hardening", "name": "Hardening", "value": "C:\\Tools\\ac.dll", "image_path": "C:\\Tools\\ac.dll", "image_dir": "C:\\Tools" },
+        { "type": "winlogon_shell", "location": "Winlogon\\Shell", "name": "Shell", "value": "explorer.exe", "image_path": "C:\\Windows\\explorer.exe", "image_dir": "C:\\Windows" },
+        { "type": "winlogon_userinit", "location": "Winlogon\\Userinit", "name": "Userinit", "value": "C:\\Tools\\userinit.exe", "image_path": "C:\\Tools\\userinit.exe", "image_dir": "C:\\Tools" },
+        { "type": "active_setup", "location": "ActiveSetup\\{aaaa}\\StubPath", "name": "{aaaa}", "value": "\"C:\\Tools\\stub.exe\" /x", "image_path": "C:\\Tools\\stub.exe", "image_dir": "C:\\Tools" },
+        { "type": "lsa_package", "location": "Lsa\\Notification Packages", "name": "evilpkg", "value": "evilpkg", "image_path": "C:\\Windows\\System32\\evilpkg.dll", "image_dir": "C:\\Windows\\System32" },
+        { "type": "print_monitor", "location": "Monitors\\Standard\\Driver", "name": "Standard", "value": "localspl.dll", "image_path": "C:\\Windows\\System32\\localspl.dll", "image_dir": "C:\\Windows\\System32" },
+        { "type": "netsh_helper", "location": "Netsh\\unresolved", "name": "unresolved", "value": "ghost.dll", "image_path": null, "image_dir": null }
+      ],
+      "acls": {
+        "c:\\tools\\dbg.exe": { "path": "C:\\Tools\\dbg.exe", "exists": true, "owner": "LAB\\alice", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false } ] },
+        "c:\\tools\\inj.dll": { "path": "C:\\Tools\\inj.dll", "exists": true, "owner": "LAB\\alice", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false } ] },
+        "c:\\tools\\off.dll": { "path": "C:\\Tools\\off.dll", "exists": true, "owner": "LAB\\alice", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false } ] },
+        "c:\\tools\\ac.dll": { "path": "C:\\Tools\\ac.dll", "exists": true, "owner": "LAB\\alice", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false } ] },
+        "c:\\tools\\userinit.exe": { "path": "C:\\Tools\\userinit.exe", "exists": true, "owner": "LAB\\alice", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "FullControl", "access": "Allow", "inherited": true, "inherit_only": false } ] },
+        "c:\\tools\\stub.exe": { "path": "C:\\Tools\\stub.exe", "exists": true, "owner": "LAB\\alice", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false } ] },
+        "c:\\windows\\system32\\evilpkg.dll": { "path": "C:\\Windows\\System32\\evilpkg.dll", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false } ] },
+        "c:\\windows\\system32\\clean.exe": { "path": "C:\\Windows\\System32\\clean.exe", "exists": true, "owner": "NT SERVICE\\TrustedInstaller", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false } ] },
+        "c:\\windows\\explorer.exe": { "path": "C:\\Windows\\explorer.exe", "exists": true, "owner": "NT SERVICE\\TrustedInstaller", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false } ] },
+        "c:\\windows\\system32\\localspl.dll": { "path": "C:\\Windows\\System32\\localspl.dll", "exists": true, "owner": "NT SERVICE\\TrustedInstaller", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false } ] }
+      }
+    }
+  },
+  "runs": [
+    {
+      "perspective": "auto",
+      "expect": [
+        "PS-HOOK-001|IFEO\\notepad.exe\\Debugger -> C:\\Tools\\dbg.exe",
+        "PS-HOOK-002|HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\AppInit_DLLs -> C:\\Tools\\inj.dll",
+        "PS-HOOK-003|AppCertDlls\\Hardening -> C:\\Tools\\ac.dll",
+        "PS-HOOK-004|Winlogon\\Userinit -> C:\\Tools\\userinit.exe",
+        "PS-HOOK-005|ActiveSetup\\{aaaa}\\StubPath -> C:\\Tools\\stub.exe",
+        "PS-HOOK-006|Lsa\\Notification Packages -> C:\\Windows\\System32\\evilpkg.dll"
+      ]
+    }
+  ]
+}

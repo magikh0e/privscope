@@ -83,13 +83,14 @@ that belongs to an ordinary user is a finding.
 
 ## What it checks
 
-**Windows**: 32 rules in `privscope/rules/windows/`:
+**Windows**: 38 rules in `privscope/rules/windows/`:
 
 | Area | Checks |
 |---|---|
 | Services | Overwritable executable, folder that accepts new files (DLL planting), unquoted path that can / can't be hijacked, missing executable that non-admins can create |
 | Scheduled tasks | SYSTEM / service-account / highest-privilege tasks whose program is overwritable, missing but creatable, or in a writable folder; disabled ones that would be |
 | Logon programs | HKLM Run entries that are overwritable, missing but creatable, have a hijackable unquoted path, or sit in a writable folder |
+| Registry hooks | IFEO / SilentProcessExit, AppInit_DLLs, AppCertDlls, Winlogon Userinit/Shell/Taskman, Active Setup, and LSA/print-monitor/netsh DLL registrations that point at a writable or creatable program |
 | System PATH | Writable folders, and missing folders that non-admins could create |
 | Policy | AlwaysInstallElevated, UAC off / no prompt / no secure desktop, remote UAC filtering off, WDigest, LSA protection, Point and Print, WSUS over HTTP, LM/NTLMv1 |
 | Account | Privileges that lead to SYSTEM (SeImpersonate, SeBackup, SeDebug...), admin-equivalent groups, docker-users |
@@ -155,10 +156,10 @@ tests/lab/                                misconfigured container + end-to-end c
 
 ## Roadmap
 
-- [x] Windows collector and 32 rules; Linux collector and 37 rules.
+- [x] Windows collector and 38 rules; Linux collector and 37 rules.
 - [x] Python analyzer: text/Markdown/HTML/JSON reports, run-to-run diff, `--fail-on`.
 - [ ] Browser analyzer: drop the JSON in, same rule files, offline report (fwscope-style).
-- [ ] Windows: service registry-key DACLs and service permissions (sc sdshow).
+- [ ] Windows: registry-key DACLs (writable hook/service keys you can set from scratch) and service permissions (sc sdshow). Hook *targets* are covered; key-write detection is next.
 - [ ] Linux: POSIX ACLs (getfacl), writable sudo-run scripts' interpreters, kernel/package
       versions for known local-privilege-escalation CVEs.
 - [ ] Patch/driver/kernel rules fed by cvescope.

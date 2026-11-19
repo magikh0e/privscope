@@ -161,6 +161,23 @@
             }
           }
         },
+        "exec_hooks": {
+          "type": "array",
+          "description": "Registry execution-hook points (IFEO, AppInit/AppCert DLLs, Winlogon, Active Setup, LSA/print/netsh), each with the program its value resolves to. The resolved path is also in facts.acls.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": ["string", "null"] },
+              "location": { "type": ["string", "null"] },
+              "name": { "type": ["string", "null"] },
+              "value": { "type": ["string", "null"] },
+              "image_path": { "type": ["string", "null"] },
+              "image_dir": { "type": ["string", "null"] },
+              "enabled": { "type": ["boolean", "null"] },
+              "signed_required": { "type": ["boolean", "null"] }
+            }
+          }
+        },
         "path_dirs": {
           "type": "array",
           "items": {

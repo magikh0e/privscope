@@ -93,6 +93,7 @@ fired. Linux lives in `privscope/redteam/generate.py` under `LINUX`, Windows und
 | WIN-TASK-BIN | T1053.005 | PS-TASK-001 | Overwrite a privileged task's program, run it, prove, restore |
 | WIN-AUTORUN | T1547.001 | PS-AUTO-001 | Overwrite a machine-wide logon program (fires next logon) |
 | WIN-AIE-MSI | T1548.002 | PS-POL-001 | Run a benign MSI under AlwaysInstallElevated |
+| WIN-HOOK-TARGET | T1546 | PS-HOOK-001..006 | Overwrite the file a registry execution hook (IFEO, AppInit, Winlogon, Active Setup, LSA/print/netsh) points at |
 
 The Linux set is validated end to end against `tests/lab/` (a deliberately misconfigured
 container): the pack reaches real root and then restores every change. The Windows set is
