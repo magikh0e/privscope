@@ -1,0 +1,47 @@
+{
+  "name": "registry-keys",
+  "description": "Writable registry keys, collected as a standard user: a service key a non-admin can write (fires), the same on a disabled service (does not), a service key with the normal Users=ReadKey (does not); a writable IFEO key and a writable Run key (fire), a protected Winlogon key (does not). Registry rights are their own set; writable_key tests SetValue/CreateSubKey/WRITE_DAC.",
+  "collection": {
+    "privscope": { "tool": "privscope-collector", "platform": "windows", "version": "0.1.0", "schema_version": 1, "kind": "collection" },
+    "host": { "hostname": "WS1" },
+    "principal": {
+      "user": "LAB\\alice", "sid": "S-1-5-21-1-2-3-1001", "is_admin": false, "elevation": "standard",
+      "groups": [
+        { "sid": "S-1-1-0", "name": "Everyone" },
+        { "sid": "S-1-5-32-545", "name": "BUILTIN\\Users" }
+      ],
+      "privileges": []
+    },
+    "facts": {
+      "services": [
+        { "name": "BadSvc", "run_as": "LocalSystem", "start_mode": "Auto", "state": "Running", "reg_key": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\BadSvc" },
+        { "name": "DisSvc", "run_as": "LocalSystem", "start_mode": "Disabled", "state": "Stopped", "reg_key": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\DisSvc" },
+        { "name": "GoodSvc", "run_as": "LocalSystem", "start_mode": "Auto", "state": "Running", "reg_key": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\GoodSvc" }
+      ],
+      "reg_keys": [
+        { "category": "ifeo", "key": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\notepad.exe", "exists": true },
+        { "category": "run", "key": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", "exists": true },
+        { "category": "winlogon", "key": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", "exists": true }
+      ],
+      "acls": {},
+      "reg_acls": {
+        "hklm\\system\\currentcontrolset\\services\\badsvc": { "path": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\BadSvc", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "FullControl", "access": "Allow", "inherited": false, "inherit_only": false } ] },
+        "hklm\\system\\currentcontrolset\\services\\dissvc": { "path": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\DisSvc", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "SetValue, CreateSubKey", "access": "Allow", "inherited": false, "inherit_only": false } ] },
+        "hklm\\system\\currentcontrolset\\services\\goodsvc": { "path": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\GoodSvc", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadKey", "access": "Allow", "inherited": false, "inherit_only": false } ] },
+        "hklm\\software\\microsoft\\windows nt\\currentversion\\image file execution options\\notepad.exe": { "path": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\notepad.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "SetValue, CreateSubKey, ReadKey", "access": "Allow", "inherited": true, "inherit_only": false } ] },
+        "hklm\\software\\microsoft\\windows\\currentversion\\run": { "path": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "FullControl", "access": "Allow", "inherited": false, "inherit_only": false } ] },
+        "hklm\\software\\microsoft\\windows nt\\currentversion\\winlogon": { "path": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [ { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadKey", "access": "Allow", "inherited": false, "inherit_only": false } ] }
+      }
+    }
+  },
+  "runs": [
+    {
+      "perspective": "auto",
+      "expect": [
+        "PS-REGK-001|BadSvc",
+        "PS-REGK-002|ifeo: HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\notepad.exe",
+        "PS-REGK-003|HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+      ]
+    }
+  ]
+}

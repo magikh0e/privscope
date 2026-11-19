@@ -1,0 +1,58 @@
+{
+  "rules": [
+    {
+      "id": "PS-REGK-001",
+      "title": "Service registry key can be modified by non-admins",
+      "category": "registry",
+      "severity": "critical",
+      "select": "facts.services[*]",
+      "where": {
+        "all": [
+          { "writable_key": "reg_key" },
+          { "field": "start_mode", "ne": "Disabled" }
+        ]
+      },
+      "subject": "{name}",
+      "evidence": { "service": "name", "key": "reg_key", "runs as": "run_as", "start mode": "start_mode" },
+      "why": "Whoever can write a service's registry key can change its ImagePath (or a svchost service's Parameters\\ServiceDll) to their own program, which the service then runs as its account, usually SYSTEM, the next time it starts or the machine reboots.",
+      "fix": "Restore the default permissions on HKLM\\SYSTEM\\CurrentControlSet\\Services\\<service> so only SYSTEM and Administrators can write it (sc sdset <service> <sddl>, or reset it to match a known-good machine). Find out what loosened it.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/011/"]
+    },
+    {
+      "id": "PS-REGK-002",
+      "title": "Execution-hook registry key can be modified by non-admins",
+      "category": "registry",
+      "severity": "high",
+      "select": "facts.reg_keys[*]",
+      "where": {
+        "all": [
+          { "field": "category", "in": ["ifeo", "appinit", "appcert", "winlogon", "lsa", "print_monitors", "netsh", "active_setup"] },
+          { "writable_key": "key" }
+        ]
+      },
+      "subject": "{category}: {key}",
+      "evidence": { "kind": "category", "key": "key" },
+      "why": "Write access to this key lets a non-admin set an execution hook from scratch (an IFEO debugger, an AppInit or AppCert DLL, a Winlogon or Active Setup program, or an LSA / print-monitor / netsh DLL), which Windows then runs in a privileged context. Nothing needs to be hooked today for this to be exploitable.",
+      "fix": "Restore the default permissions so only SYSTEM and Administrators can write the key. These keys should never be writable by Users.",
+      "refs": ["https://attack.mitre.org/techniques/T1546/012/"]
+    },
+    {
+      "id": "PS-REGK-003",
+      "title": "Machine-wide Run key can be modified by non-admins",
+      "category": "registry",
+      "severity": "high",
+      "select": "facts.reg_keys[*]",
+      "where": {
+        "all": [
+          { "field": "category", "eq": "run" },
+          { "writable_key": "key" }
+        ]
+      },
+      "subject": "{key}",
+      "evidence": { "key": "key" },
+      "why": "Write access to a machine-wide Run key lets a non-admin add a program that starts in every user's session at logon, administrators included.",
+      "fix": "Restore the default permissions so only SYSTEM and Administrators can write HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run (and RunOnce, and the Wow6432Node copy).",
+      "refs": ["https://attack.mitre.org/techniques/T1547/001/"]
+    }
+  ]
+}

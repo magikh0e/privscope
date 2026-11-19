@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Tuple
 from . import __version__
 from .acl import (
     PLATFORMS, AclIndex, Perspective, access_check, build_perspective, can_search, doc_platform,
-    normalize, parent,
+    normalize, normalize_reg, parent, reg_writable,
 )
 
 SEVERITIES = ["info", "low", "medium", "high", "critical"]
@@ -17,7 +17,7 @@ SEV_RANK = {s: i for i, s in enumerate(SEVERITIES)}
 
 FIELD_OPS = ("eq", "ne", "in", "not_in", "regex", "exists", "lt", "lte", "gt", "gte",
              "eq_field", "ne_field")
-PATH_OPS = ("writable", "readable", "creatable", "creatable_file", "unquoted_hijack")
+PATH_OPS = ("writable", "readable", "creatable", "creatable_file", "unquoted_hijack", "writable_key")
 REQUIRED = ("id", "title", "category", "severity", "select", "where", "why", "fix")
 OPTIONAL = ("subject", "evidence", "refs")
 
@@ -222,6 +222,8 @@ class Evaluator:
         self.platform = persp.platform
         facts = doc.get("facts") if isinstance(doc.get("facts"), dict) else {}
         self.acls = AclIndex(facts.get("acls"), self.platform)
+        reg = facts.get("reg_acls") if isinstance(facts.get("reg_acls"), dict) else {}
+        self.reg = {normalize_reg(k): v for k, v in reg.items() if isinstance(v, dict)}
         self._regex: Dict[str, re.Pattern] = {}
 
     def _re(self, pattern: str) -> re.Pattern:
@@ -308,6 +310,12 @@ class Evaluator:
     def _readable(self, path) -> Tuple[bool, List[str]]:
         ok, who, _ = self._grant(path, "read")
         return ok, [f"{path} is readable by {who}"] if ok else []
+
+    def _writable_key(self, keypath) -> Tuple[bool, List[str]]:
+        if not isinstance(keypath, str) or not keypath.strip():
+            return False, []
+        ok, who = reg_writable(self.reg.get(normalize_reg(keypath)), self.persp)
+        return ok, [f"the registry key {keypath} is writable by {who}"] if ok else []
 
     def _recorded_missing(self, path) -> Optional[str]:
         """Normalized path when facts.acls records it with exists false; otherwise None."""

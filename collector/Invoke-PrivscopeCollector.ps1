@@ -47,6 +47,7 @@ param(
 
 $ErrorActionPreference = 'Continue'
 $script:AclTable = [ordered]@{}
+$script:RegAclTable = [ordered]@{}
 
 $IntegrityNames = @{
     'S-1-16-0'     = 'Untrusted'
@@ -127,6 +128,87 @@ function Add-AclFactWithAncestors {
         if (-not $parent -or $parent -eq $p) { break }
         $p = $parent
     }
+}
+
+# --- registry-key ACLs ----------------------------------------------------------------
+# A writable registry key is its own escalation path (set an execution hook, or redirect a
+# service). Recorded as the raw DACL, keyed by a canonical "HKLM\..." path; the analyzer
+# decides writability, same split as the filesystem table.
+
+function ConvertTo-RegKey {
+    param([string]$PsPath)
+    $p = $PsPath -replace '^Microsoft\.PowerShell\.Core\\Registry::', ''
+    $p = $p -replace '^HKEY_LOCAL_MACHINE', 'HKLM' -replace '^HKEY_CURRENT_USER', 'HKCU' -replace '^HKEY_USERS', 'HKU' -replace '^HKEY_CLASSES_ROOT', 'HKCR'
+    $p = $p -replace '^HKLM:', 'HKLM' -replace '^HKCU:', 'HKCU' -replace '^HKU:', 'HKU' -replace '^HKCR:', 'HKCR'
+    return $p
+}
+
+function Get-RegAclFacts {
+    param([string]$PsPath)
+    try {
+        if (-not (Test-Path -LiteralPath $PsPath)) { return [PSCustomObject]@{ exists = $false; aces = @() } }
+        $acl = Get-Acl -LiteralPath $PsPath -ErrorAction Stop
+        $io = [System.Security.AccessControl.PropagationFlags]::InheritOnly
+        $aces = foreach ($ace in $acl.Access) {
+            $sid = $null
+            try { $sid = $ace.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value } catch { $sid = $null }
+            [PSCustomObject]@{
+                identity     = $ace.IdentityReference.Value
+                sid          = $sid
+                rights       = $ace.RegistryRights.ToString()
+                access       = $ace.AccessControlType.ToString()
+                inherited    = [bool]$ace.IsInherited
+                inherit_only = (($ace.PropagationFlags -band $io) -ne 0)
+            }
+        }
+        [PSCustomObject]@{ exists = $true; owner = $acl.Owner; aces = @($aces) }
+    } catch {
+        [PSCustomObject]@{ exists = $true; error = $_.Exception.Message; aces = @() }
+    }
+}
+
+# Record a key's DACL and return its canonical path (for records to reference). Cached.
+function Add-RegAcl {
+    param([string]$PsPath)
+    $key = ConvertTo-RegKey $PsPath
+    $k = $key.ToLowerInvariant()
+    if (-not $script:RegAclTable.Contains($k)) {
+        $r = Get-RegAclFacts $PsPath
+        $r | Add-Member -NotePropertyName path -NotePropertyValue $key -Force
+        $script:RegAclTable[$k] = $r
+    }
+    return $key
+}
+
+# The fixed set of keys where write access alone is an escalation, plus the per-exe IFEO
+# subkeys. Service keys are recorded from Get-ServiceFacts.
+function Get-RegKeyFacts {
+    $defs = @(
+        @{ cat = 'ifeo';           path = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options' },
+        @{ cat = 'appinit';        path = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows' },
+        @{ cat = 'appcert';        path = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' },
+        @{ cat = 'winlogon';       path = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' },
+        @{ cat = 'lsa';            path = 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa' },
+        @{ cat = 'print_monitors'; path = 'HKLM:\SYSTEM\CurrentControlSet\Control\Print\Monitors' },
+        @{ cat = 'netsh';          path = 'HKLM:\SOFTWARE\Microsoft\Netsh' },
+        @{ cat = 'active_setup';   path = 'HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components' },
+        @{ cat = 'run';            path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' },
+        @{ cat = 'run';            path = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce' },
+        @{ cat = 'run';            path = 'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Run' }
+    )
+    $out = @()
+    foreach ($d in $defs) {
+        $key = Add-RegAcl $d.path
+        $out += [PSCustomObject]@{ category = $d.cat; key = $key; exists = [bool](Test-Path -LiteralPath $d.path) }
+    }
+    $ifeo = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options'
+    if (Test-Path $ifeo) {
+        Get-ChildItem $ifeo -ErrorAction SilentlyContinue | ForEach-Object {
+            $key = Add-RegAcl $_.PSPath
+            $out += [PSCustomObject]@{ category = 'ifeo'; key = $key; exists = $true }
+        }
+    }
+    $out
 }
 
 # --- path helpers ---------------------------------------------------------------------
@@ -307,6 +389,7 @@ function Get-ServiceFacts {
             path_name_raw = $s.PathName
             image_path    = $img
             image_dir     = Get-ParentDir $img
+            reg_key       = (Add-RegAcl "HKLM:\SYSTEM\CurrentControlSet\Services\$($s.Name)")
         }
     }
 }
@@ -608,12 +691,14 @@ $report = [ordered]@{
         scheduled_tasks      = @(Get-ScheduledTaskFacts)
         autoruns             = @(Get-AutorunFacts)
         exec_hooks           = @(Get-ExecHookFacts)
+        reg_keys             = @(Get-RegKeyFacts)
         path_dirs            = @(Get-PathDirFacts)
         policies             = Get-PolicyFacts
         credential_artifacts = @(Get-CredentialArtifactFacts)
     }
 }
 $report.facts['acls'] = $script:AclTable
+$report.facts['reg_acls'] = $script:RegAclTable
 $report.run['duration_ms'] = [int]((Get-Date) - $start).TotalMilliseconds
 
 $json = $report | ConvertTo-Json -Depth 12 -Compress

@@ -329,3 +329,91 @@ def check(acl: Optional[dict], persp: Perspective, kind: str) -> Tuple[bool, str
     """Access to the object itself (no folder traversal); True plus a 'who' description."""
     ok, who, _ = access_check(acl, persp, kind)
     return ok, who
+
+
+# --- registry keys (Windows) ------------------------------------------------------------
+# A writable registry key is its own escalation path: set a hook from scratch, or redirect a
+# service's ImagePath. Registry rights differ from file rights, so they get their own mask.
+
+KEY_SET_VALUE = 0x2
+KEY_CREATE_SUB_KEY = 0x4
+REG_WRITE = KEY_SET_VALUE | KEY_CREATE_SUB_KEY | WRITE_DAC | WRITE_OWNER
+REG_FULL = 0xF003F
+
+REG_RIGHT_NAMES = {
+    "QueryValues": 0x1, "SetValue": 0x2, "CreateSubKey": 0x4, "EnumerateSubKeys": 0x8,
+    "Notify": 0x10, "CreateLink": 0x20, "Delete": 0x10000, "ReadPermissions": 0x20000,
+    "ChangePermissions": 0x40000, "TakeOwnership": 0x80000,
+    "WriteKey": 0x20006, "ReadKey": 0x20019, "ExecuteKey": 0x20019, "FullControl": 0xF003F,
+}
+
+_REG_HIVES = (
+    ("hkey_local_machine", "hklm"), ("hkey_current_user", "hkcu"), ("hkey_users", "hku"),
+    ("hkey_classes_root", "hkcr"), ("hklm:", "hklm"), ("hkcu:", "hkcu"),
+    ("hku:", "hku"), ("hkcr:", "hkcr"),
+)
+
+
+def normalize_reg(path) -> str:
+    if not isinstance(path, str):
+        return ""
+    p = re.sub(r"(?i)^microsoft\.powershell\.core\\registry::", "", path.strip().replace("/", "\\"))
+    low = p.lower()
+    for a, b in _REG_HIVES:
+        if low.startswith(a):
+            p = b + p[len(a):]
+            break
+    return p.rstrip("\\").lower()
+
+
+def parse_reg_rights(value) -> int:
+    if value is None or isinstance(value, bool):
+        return 0
+    s = str(value).strip()
+    if _INT.match(s):
+        return int(s) & 0xFFFFFFFF
+    mask = 0
+    for part in s.split(","):
+        mask |= REG_RIGHT_NAMES.get(part.strip(), 0)
+    return mask
+
+
+def map_generic_reg(mask: int) -> int:
+    m = mask & ~GENERIC_BITS & 0xFFFFFFFF
+    if mask & GENERIC_ALL:
+        m |= REG_FULL
+    if mask & GENERIC_WRITE:
+        m |= 0x20006
+    if mask & (GENERIC_READ | GENERIC_EXECUTE):
+        m |= 0x20019
+    return m
+
+
+def reg_writable(acl: Optional[dict], persp: Perspective) -> Tuple[bool, str]:
+    """True plus a 'who' description when the perspective can set values / create subkeys /
+    rewrite the DACL of this registry key."""
+    if not acl or acl.get("exists") is not True:
+        return False, ""
+    allow = deny = 0
+    grants = []
+    for ace in acl.get("aces") or []:
+        if not isinstance(ace, dict) or ace.get("inherit_only") is True:
+            continue
+        sid = ace.get("sid")
+        if not isinstance(sid, str) or not persp.matches(sid):
+            continue
+        m = map_generic_reg(parse_reg_rights(ace.get("rights")))
+        if ace.get("access") == "Deny":
+            deny |= m
+        elif ace.get("access") == "Allow":
+            allow |= m
+            grants.append((str(ace.get("identity") or sid), str(ace.get("rights") or ""), m))
+    owner = acl.get("owner")
+    if persp.owner_name and isinstance(owner, str) and owner.lower() == persp.owner_name.lower():
+        allow |= WRITE_DAC
+        grants.append((f"{owner} (owner)", "implicit ChangePermissions", WRITE_DAC))
+    eff = allow & ~deny & 0xFFFFFFFF
+    if not eff & REG_WRITE:
+        return False, ""
+    who = [f"{ident} ({rights})" for ident, rights, m in grants if (m & ~deny) & REG_WRITE]
+    return True, ", ".join(who)

@@ -207,9 +207,26 @@
             }
           }
         },
+        "reg_keys": {
+          "type": "array",
+          "description": "Sensitive registry keys where write access alone is an escalation (service keys, execution-hook keys, Run keys). Each key's DACL is in facts.reg_acls.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": { "type": ["string", "null"] },
+              "key": { "type": ["string", "null"] },
+              "exists": { "type": ["boolean", "null"] }
+            }
+          }
+        },
         "acls": {
           "type": "object",
           "description": "Every recorded filesystem ACL, keyed by lower-cased path. Includes the ancestor folders of each executable and PATH entry.",
+          "additionalProperties": { "$ref": "#/$defs/aclFacts" }
+        },
+        "reg_acls": {
+          "type": "object",
+          "description": "Registry-key DACLs, keyed by a canonical lower-cased HKLM\\... path. Rights are registry rights (SetValue, CreateSubKey, FullControl, ...).",
           "additionalProperties": { "$ref": "#/$defs/aclFacts" }
         }
       }
