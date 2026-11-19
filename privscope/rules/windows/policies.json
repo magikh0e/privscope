@@ -1,0 +1,161 @@
+{
+  "rules": [
+    {
+      "id": "PS-POL-001",
+      "title": "AlwaysInstallElevated is on",
+      "category": "policies",
+      "severity": "critical",
+      "select": "facts.policies",
+      "where": {
+        "all": [
+          { "field": "always_install_elevated.hklm", "eq": 1 },
+          { "field": "always_install_elevated.hkcu", "eq": 1 }
+        ]
+      },
+      "subject": "AlwaysInstallElevated",
+      "evidence": {
+        "HKLM": "always_install_elevated.hklm",
+        "HKCU": "always_install_elevated.hkcu"
+      },
+      "why": "With both values set, Windows Installer runs every .msi with SYSTEM rights, whoever starts it.",
+      "fix": "Set both values to 0 or delete them. In Group Policy, turn off Windows Components > Windows Installer > 'Always install with elevated privileges' under both Computer and User Configuration.",
+      "refs": ["https://learn.microsoft.com/en-us/windows/win32/msi/alwaysinstallelevated"]
+    },
+    {
+      "id": "PS-POL-002",
+      "title": "User Account Control is turned off",
+      "category": "policies",
+      "severity": "high",
+      "select": "facts.policies",
+      "where": { "field": "uac.enable_lua", "eq": 0 },
+      "subject": "EnableLUA",
+      "evidence": { "EnableLUA": "uac.enable_lua" },
+      "why": "With UAC off, administrators run everything with full rights, so any code that runs in an admin's session is already elevated.",
+      "fix": "Set HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\EnableLUA to 1 and reboot.",
+      "refs": ["https://learn.microsoft.com/en-us/windows/security/application-security/application-control/user-account-control/settings-and-configuration"]
+    },
+    {
+      "id": "PS-POL-003",
+      "title": "Administrators elevate without a prompt",
+      "category": "policies",
+      "severity": "medium",
+      "select": "facts.policies",
+      "where": { "field": "uac.consent_prompt_behavior_admin", "eq": 0 },
+      "subject": "ConsentPromptBehaviorAdmin",
+      "evidence": { "ConsentPromptBehaviorAdmin": "uac.consent_prompt_behavior_admin" },
+      "why": "Code running in an administrator's session can elevate silently, with no prompt for the user to notice.",
+      "fix": "Set ConsentPromptBehaviorAdmin to 2 (always prompt, on the secure desktop) or 5 (the default).",
+      "refs": ["https://learn.microsoft.com/en-us/windows/security/application-security/application-control/user-account-control/settings-and-configuration"]
+    },
+    {
+      "id": "PS-POL-004",
+      "title": "UAC prompts don't use the secure desktop",
+      "category": "policies",
+      "severity": "low",
+      "select": "facts.policies",
+      "where": { "field": "uac.prompt_on_secure_desktop", "eq": 0 },
+      "subject": "PromptOnSecureDesktop",
+      "evidence": { "PromptOnSecureDesktop": "uac.prompt_on_secure_desktop" },
+      "why": "Other programs in the session can see and interact with the elevation prompt, or imitate it.",
+      "fix": "Set PromptOnSecureDesktop to 1.",
+      "refs": ["https://learn.microsoft.com/en-us/windows/security/application-security/application-control/user-account-control/settings-and-configuration"]
+    },
+    {
+      "id": "PS-POL-005",
+      "title": "Remote UAC restrictions are off for local accounts",
+      "category": "policies",
+      "severity": "medium",
+      "select": "facts.policies",
+      "where": { "field": "uac.local_account_token_filter_policy", "eq": 1 },
+      "subject": "LocalAccountTokenFilterPolicy",
+      "evidence": { "LocalAccountTokenFilterPolicy": "uac.local_account_token_filter_policy" },
+      "why": "Local administrator accounts get a full admin token over the network, so a reused local admin password or hash gives remote admin access to this machine.",
+      "fix": "Set LocalAccountTokenFilterPolicy to 0 or delete it, and give each machine a unique local admin password (Windows LAPS).",
+      "refs": ["https://learn.microsoft.com/en-us/troubleshoot/windows-server/windows-security/user-account-control-and-remote-restriction"]
+    },
+    {
+      "id": "PS-POL-006",
+      "title": "WDigest keeps logon passwords in memory",
+      "category": "policies",
+      "severity": "high",
+      "select": "facts.policies",
+      "where": { "field": "wdigest_use_logon_credential", "eq": 1 },
+      "subject": "UseLogonCredential",
+      "evidence": { "UseLogonCredential": "wdigest_use_logon_credential" },
+      "why": "Windows keeps the passwords of logged-on users in LSASS memory in a recoverable form, so anyone who reaches admin on this machine can read the plaintext passwords of everyone logged on.",
+      "fix": "Set HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest\\UseLogonCredential to 0, or delete it.",
+      "refs": ["https://attack.mitre.org/techniques/T1003/001/"]
+    },
+    {
+      "id": "PS-POL-007",
+      "title": "LSA protection isn't turned on by policy",
+      "category": "policies",
+      "severity": "info",
+      "select": "facts.policies",
+      "where": { "not": { "field": "lsa.run_as_ppl", "in": [1, 2] } },
+      "subject": "RunAsPPL",
+      "evidence": { "RunAsPPL": "lsa.run_as_ppl" },
+      "why": "Without LSA protection, any admin process can read LSASS memory and the credentials in it.",
+      "fix": "Set HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\RunAsPPL to 1 (or 2 for no UEFI lock) and reboot, or turn on Local Security Authority protection under Windows Security > Device security > Core isolation. Newer Windows 11 builds can enable it without this value, so check that page first.",
+      "refs": ["https://learn.microsoft.com/en-us/windows-server/security/credentials-protection-and-management/configuring-additional-lsa-protection"]
+    },
+    {
+      "id": "PS-POL-008",
+      "title": "Point and Print lets non-admins install printer drivers",
+      "category": "policies",
+      "severity": "high",
+      "select": "facts.policies",
+      "where": {
+        "all": [
+          { "field": "point_and_print.restrict_driver_install_to_admins", "eq": 0 },
+          {
+            "any": [
+              { "field": "point_and_print.no_warning_no_elevation_on_install", "eq": 1 },
+              { "field": "point_and_print.update_prompt_settings", "eq": 1 }
+            ]
+          }
+        ]
+      },
+      "subject": "PointAndPrint",
+      "evidence": {
+        "RestrictDriverInstallationToAdministrators": "point_and_print.restrict_driver_install_to_admins",
+        "NoWarningNoElevationOnInstall": "point_and_print.no_warning_no_elevation_on_install",
+        "UpdatePromptSettings": "point_and_print.update_prompt_settings"
+      },
+      "why": "Non-admins can install printer drivers without an elevation prompt, and printer drivers run as SYSTEM. This is the configuration that kept PrintNightmare exploitable after the patch.",
+      "fix": "Set RestrictDriverInstallationToAdministrators to 1 (or delete it: 1 is the default on patched systems), and set NoWarningNoElevationOnInstall and UpdatePromptSettings to 0.",
+      "refs": ["https://nvd.nist.gov/vuln/detail/CVE-2021-34527"]
+    },
+    {
+      "id": "PS-POL-009",
+      "title": "Windows Update uses a WSUS server over plain HTTP",
+      "category": "policies",
+      "severity": "high",
+      "select": "facts.policies",
+      "where": {
+        "all": [
+          { "field": "wsus.use_wu_server", "eq": 1 },
+          { "field": "wsus.wu_server", "regex": "^\\s*http://" }
+        ]
+      },
+      "subject": "WUServer",
+      "evidence": { "WUServer": "wsus.wu_server", "UseWUServer": "wsus.use_wu_server" },
+      "why": "Updates come from WSUS over unencrypted HTTP. Anyone who can intercept that traffic can serve a fake update, which installs as SYSTEM.",
+      "fix": "Configure WSUS for HTTPS and point WUServer and WUStatusServer at the https:// address.",
+      "refs": ["https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/2-configure-wsus#bkmk_2_5_ConfigSSL"]
+    },
+    {
+      "id": "PS-POL-010",
+      "title": "LM and NTLMv1 authentication are allowed",
+      "category": "policies",
+      "severity": "medium",
+      "select": "facts.policies",
+      "where": { "field": "lsa.lm_compatibility_level", "lt": 3 },
+      "subject": "LmCompatibilityLevel",
+      "evidence": { "LmCompatibilityLevel": "lsa.lm_compatibility_level" },
+      "why": "This machine will answer with LM or NTLMv1 responses, which are easy to crack or relay.",
+      "fix": "Set HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\LmCompatibilityLevel to 5 (send NTLMv2 only, refuse LM and NTLM), or at least 3.",
+      "refs": ["https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/network-security-lan-manager-authentication-level"]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "name": "policies-good",
+  "description": "Safe and edge-case policy values: AlwaysInstallElevated set in HKLM only (with HKCU as boolean true, which must not equal 1), Point and Print restriction absent (defaults to safe) while the prompt settings are on, HTTPS WSUS, LSA protection set to 2, LM level absent.",
+  "collection": {
+    "privscope": { "tool": "privscope-collector", "version": "0.1.0", "schema_version": 1, "kind": "collection" },
+    "principal": { "user": "LAB\\alice", "sid": "S-1-5-21-1-2-3-1001", "is_admin": false, "elevation": "standard", "groups": [], "privileges": [] },
+    "facts": {
+      "policies": {
+        "always_install_elevated": { "hklm": 1, "hkcu": true },
+        "uac": {
+          "enable_lua": 1,
+          "consent_prompt_behavior_admin": 5,
+          "prompt_on_secure_desktop": 1,
+          "local_account_token_filter_policy": 0,
+          "filter_administrator_token": null
+        },
+        "lsa": { "run_as_ppl": 2, "lm_compatibility_level": null, "restrict_anonymous": 0, "no_lm_hash": 1 },
+        "wdigest_use_logon_credential": null,
+        "point_and_print": {
+          "restrict_driver_install_to_admins": null,
+          "no_warning_no_elevation_on_install": 1,
+          "update_prompt_settings": 1
+        },
+        "wsus": { "wu_server": "https://wsus.lab.example:8531", "wu_status_server": "https://wsus.lab.example:8531", "use_wu_server": 1 }
+      }
+    }
+  },
+  "runs": [
+    { "perspective": "auto", "expect": [] }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "name": "principal-creds",
+  "description": "A standard user holding escalation privileges (one Disabled, which still counts), admin-equivalent and Docker groups (a look-alike group name must not match), and every kind of credential artifact.",
+  "collection": {
+    "privscope": { "tool": "privscope-collector", "version": "0.1.0", "schema_version": 1, "kind": "collection" },
+    "principal": {
+      "user": "LAB\\alice",
+      "sid": "S-1-5-21-1-2-3-1001",
+      "is_admin": false,
+      "elevation": "standard",
+      "groups": [
+        { "sid": "S-1-5-32-545", "name": "BUILTIN\\Users" },
+        { "sid": "S-1-5-32-551", "name": "BUILTIN\\Backup Operators" },
+        { "sid": "S-1-5-21-1-2-3-1005", "name": "LAB\\docker-users" },
+        { "sid": "S-1-5-21-1-2-3-1101", "name": "LAB\\DnsAdmins" },
+        { "sid": "S-1-5-21-1-2-3-1102", "name": "LAB\\NotDnsAdmins" }
+      ],
+      "privileges": [
+        { "name": "SeImpersonatePrivilege", "description": "Impersonate a client after authentication", "state": "Enabled" },
+        { "name": "SeChangeNotifyPrivilege", "description": "Bypass traverse checking", "state": "Enabled" },
+        { "name": "SeBackupPrivilege", "description": "Back up files and directories", "state": "Disabled" }
+      ]
+    },
+    "facts": {
+      "credential_artifacts": [
+        { "type": "unattend", "path": "C:\\Windows\\Panther\\Unattend.xml", "size": 4200, "last_write": "2026-01-02T03:04:05.0000000Z", "note": "presence only" },
+        { "type": "unattend", "path": "C:\\Windows\\System32\\Sysprep\\unattend.xml", "size": 1000, "last_write": "2026-01-02T03:04:05.0000000Z", "note": "presence only" },
+        { "type": "autologon", "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", "auto_admin_logon": "1", "default_username": "kiosk", "default_password_present": true, "note": "value not read" },
+        { "type": "psreadline_history", "path": "C:\\Users\\alice\\AppData\\Roaming\\Microsoft\\Windows\\PowerShell\\PSReadLine\\ConsoleHost_history.txt", "size": 900, "last_write": "2026-01-02T03:04:05.0000000Z", "note": "presence only" }
+      ],
+      "acls": {
+        "c:\\windows\\panther\\unattend.xml": { "path": "C:\\Windows\\Panther\\Unattend.xml", "exists": true, "owner": "NT AUTHORITY\\SYSTEM", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\windows\\system32\\sysprep\\unattend.xml": { "path": "C:\\Windows\\System32\\Sysprep\\unattend.xml", "exists": true, "owner": "NT AUTHORITY\\SYSTEM", "aces": [
+          { "identity": "BUILTIN\\Administrators", "sid": "S-1-5-32-544", "rights": "FullControl", "access": "Allow", "inherited": true, "inherit_only": false },
+          { "identity": "NT AUTHORITY\\SYSTEM", "sid": "S-1-5-18", "rights": "FullControl", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] }
+      }
+    }
+  },
+  "runs": [
+    {
+      "perspective": "auto",
+      "expect": [
+        "PS-TOK-001|SeImpersonatePrivilege",
+        "PS-TOK-001|SeBackupPrivilege",
+        "PS-GRP-001|BUILTIN\\Backup Operators",
+        "PS-GRP-001|LAB\\DnsAdmins",
+        "PS-GRP-002|LAB\\docker-users",
+        "PS-CRED-001|C:\\Windows\\Panther\\Unattend.xml",
+        "PS-CRED-002|C:\\Windows\\System32\\Sysprep\\unattend.xml",
+        "PS-CRED-003|kiosk",
+        "PS-CRED-004|C:\\Users\\alice\\AppData\\Roaming\\Microsoft\\Windows\\PowerShell\\PSReadLine\\ConsoleHost_history.txt"
+      ]
+    }
+  ]
+}

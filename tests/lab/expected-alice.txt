@@ -1,0 +1,16 @@
+PL-CAP-001|/usr/local/bin/capsleep
+PL-CRED-001|/home/bob/.ssh/id_rsa
+PL-CRON-001|/etc/cron.d/backup -> /opt/app/bin/backup.sh
+PL-CRON-003|/etc/cron.d/stale -> /srv/gone/run.sh
+PL-FILE-002|/var/backups/shadow.bak
+PL-FILE-004|/etc/profile.d
+PL-GRP-001|docker
+PL-GRP-003|adm
+PL-LIB-002|/opt/lib
+PL-NFS-001|/srv *(rw,no_root_squash)
+PL-PATH-001|environment: /opt/tools
+PL-SUDO-002|(this account) (sudo -n -l): /usr/bin/find
+PL-SUDO-004|(this account) (sudo -n -l): /bin/cat /var/log/*
+PL-SUDO-005|sudo -n -l: env_keep+=LD_PRELOAD
+PL-SUID-002|/usr/bin/find
+PL-SVC-002|/etc/systemd/system/app.service

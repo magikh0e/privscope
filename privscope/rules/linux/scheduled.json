@@ -1,0 +1,138 @@
+{
+  "rules": [
+    {
+      "id": "PL-CRON-001",
+      "title": "Root cron job runs a program that can be overwritten",
+      "category": "cron",
+      "severity": "high",
+      "select": "facts.cron[*]",
+      "where": {
+        "all": [
+          { "field": "run_as_uid", "eq": 0 },
+          { "writable": "image_path" }
+        ]
+      },
+      "subject": "{source} -> {image_path}",
+      "evidence": { "defined in": "source", "runs as": "user", "schedule": "schedule", "command": "command" },
+      "why": "Root runs this program on a schedule. Anyone who can overwrite it gets their code run as root the next time the job fires.",
+      "fix": "Make the program owned by root and writable only by root (chown root:root, chmod go-w), or move it into a root-owned folder such as /usr/local/sbin and update the job.",
+      "refs": ["https://attack.mitre.org/techniques/T1053/003/"]
+    },
+    {
+      "id": "PL-CRON-002",
+      "title": "Root cron job's program folder lets non-root users replace it",
+      "category": "cron",
+      "severity": "medium",
+      "select": "facts.cron[*]",
+      "where": {
+        "all": [
+          { "field": "run_as_uid", "eq": 0 },
+          { "writable": "image_dir" }
+        ]
+      },
+      "subject": "{source} -> {image_path}",
+      "evidence": { "defined in": "source", "program folder": "image_dir", "command": "command" },
+      "why": "On Linux, whoever can write to a folder can delete and recreate the files in it (unless the folder has the sticky bit), so they can swap in their own program for the one root runs.",
+      "fix": "Make the folder owned by root and writable only by root, or move the program into a root-owned folder and update the job.",
+      "refs": ["https://attack.mitre.org/techniques/T1053/003/"]
+    },
+    {
+      "id": "PL-CRON-003",
+      "title": "Root cron job runs a missing program that non-root users can create",
+      "category": "cron",
+      "severity": "high",
+      "select": "facts.cron[*]",
+      "where": {
+        "all": [
+          { "field": "run_as_uid", "eq": 0 },
+          { "creatable_file": "image_path" }
+        ]
+      },
+      "subject": "{source} -> {image_path}",
+      "evidence": { "defined in": "source", "program": "image_path", "command": "command" },
+      "why": "Root runs a program that no longer exists, in a place where non-root users can create it. Whoever creates it runs code as root the next time the job fires.",
+      "fix": "Remove the stale job, or put the program back in a root-owned folder.",
+      "refs": ["https://attack.mitre.org/techniques/T1053/003/"]
+    },
+    {
+      "id": "PL-SVC-001",
+      "title": "Root service runs a program that can be overwritten",
+      "category": "systemd",
+      "severity": "high",
+      "select": "facts.systemd[*]",
+      "where": {
+        "all": [
+          { "field": "run_as_uid", "eq": 0 },
+          { "writable": "image_path" }
+        ]
+      },
+      "subject": "{unit} -> {image_path}",
+      "evidence": { "unit": "unit", "unit file": "unit_file", "directive": "directive", "command": "command" },
+      "why": "systemd runs this program as root. Anyone who can overwrite it gets their code run as root the next time the service starts.",
+      "fix": "Make the program owned by root and writable only by root, or reinstall the package it came from.",
+      "refs": ["https://attack.mitre.org/techniques/T1543/002/"]
+    },
+    {
+      "id": "PL-SVC-002",
+      "title": "Service unit file can be modified",
+      "category": "systemd",
+      "severity": "high",
+      "select": "facts.systemd[*]",
+      "where": { "writable": "unit_file" },
+      "subject": "{unit_file}",
+      "evidence": { "unit": "unit", "unit file": "unit_file", "runs as": "run_as" },
+      "why": "Whoever edits a unit file decides what the service runs and as which user, including root.",
+      "fix": "Unit files should be owned by root and writable only by root (chown root:root, chmod 644).",
+      "refs": ["https://attack.mitre.org/techniques/T1543/002/"]
+    },
+    {
+      "id": "PL-SVC-003",
+      "title": "Root service's program folder lets non-root users replace it",
+      "category": "systemd",
+      "severity": "medium",
+      "select": "facts.systemd[*]",
+      "where": {
+        "all": [
+          { "field": "run_as_uid", "eq": 0 },
+          { "writable": "image_dir" }
+        ]
+      },
+      "subject": "{unit} -> {image_path}",
+      "evidence": { "unit": "unit", "program folder": "image_dir", "command": "command" },
+      "why": "Whoever can write to a folder can delete and recreate the files in it (unless the folder has the sticky bit), so they can swap in their own program for the one the service runs as root.",
+      "fix": "Make the folder owned by root and writable only by root, or move the program into a root-owned folder.",
+      "refs": ["https://attack.mitre.org/techniques/T1543/002/"]
+    },
+    {
+      "id": "PL-SVC-004",
+      "title": "Root service runs a missing program that non-root users can create",
+      "category": "systemd",
+      "severity": "high",
+      "select": "facts.systemd[*]",
+      "where": {
+        "all": [
+          { "field": "run_as_uid", "eq": 0 },
+          { "creatable_file": "image_path" }
+        ]
+      },
+      "subject": "{unit} -> {image_path}",
+      "evidence": { "unit": "unit", "unit file": "unit_file", "program": "image_path" },
+      "why": "The service runs a program that no longer exists, in a place where non-root users can create it. Whoever creates it runs code as root the next time the service starts.",
+      "fix": "Remove or disable the stale unit (systemctl disable --now <unit>), or reinstall the program into a root-owned folder.",
+      "refs": ["https://attack.mitre.org/techniques/T1543/002/"]
+    },
+    {
+      "id": "PL-BOOT-001",
+      "title": "Boot script can be modified",
+      "category": "boot",
+      "severity": "high",
+      "select": "facts.boot_scripts[*]",
+      "where": { "writable": "path" },
+      "subject": "{path}",
+      "evidence": { "script": "path", "folder": "source" },
+      "why": "Init scripts and rc.local run as root at boot. Anyone who can edit one runs code as root on the next restart.",
+      "fix": "Make the script owned by root and writable only by root (chown root:root, chmod 755).",
+      "refs": ["https://attack.mitre.org/techniques/T1037/004/"]
+    }
+  ]
+}

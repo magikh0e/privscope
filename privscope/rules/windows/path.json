@@ -1,0 +1,40 @@
+{
+  "rules": [
+    {
+      "id": "PS-PATH-001",
+      "title": "Writable folder in the system PATH",
+      "category": "path",
+      "severity": "high",
+      "select": "facts.path_dirs[*]",
+      "where": {
+        "all": [
+          { "field": "scope", "eq": "Machine" },
+          { "writable": "dir" }
+        ]
+      },
+      "subject": "{dir}",
+      "evidence": { "folder": "dir", "scope": "scope" },
+      "why": "Services and other SYSTEM processes that try to load a DLL that doesn't exist fall back to the folders in the system PATH. A DLL planted in a writable PATH folder under the right name loads as SYSTEM.",
+      "fix": "Remove the folder from the system PATH if nothing needs it there, or remove write access for non-admin accounts. Tool installers that live in C:\\<Tool> and add it to PATH are the usual cause; install them under Program Files instead.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/001/"]
+    },
+    {
+      "id": "PS-PATH-002",
+      "title": "Missing system PATH folder can be created by non-admins",
+      "category": "path",
+      "severity": "high",
+      "select": "facts.path_dirs[*]",
+      "where": {
+        "all": [
+          { "field": "scope", "eq": "Machine" },
+          { "creatable": "dir" }
+        ]
+      },
+      "subject": "{dir}",
+      "evidence": { "folder": "dir", "scope": "scope" },
+      "why": "The folder doesn't exist, but non-admins can create it. Whoever creates it controls a folder in the system PATH, and can plant DLLs that SYSTEM processes will find there.",
+      "fix": "Remove the stale entry from the system PATH. If it's still needed, create the folder now with an ACL that only lets Administrators and SYSTEM write to it.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/001/"]
+    }
+  ]
+}

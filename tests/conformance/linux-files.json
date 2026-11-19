@@ -1,0 +1,130 @@
+{
+  "name": "linux-files",
+  "description": "Linux, collected as a standard user (alice, uid 1000, group alice 1000): setuid/setgid programs, file capabilities, files root relies on, NFS, loader config, sockets, boot scripts. Covers owner/group/other precedence (a group member gets the group bits even when 'other' would allow more) and folder traversal (a writable file under an unreachable folder isn't a finding).",
+  "collection": {
+    "privscope": { "tool": "privscope-collector", "platform": "linux", "version": "0.1.0", "schema_version": 1, "kind": "collection" },
+    "host": { "hostname": "lab", "wsl": false, "wsl_windows_path": false },
+    "principal": {
+      "user": "alice", "uid": 1000, "gid": 1000, "is_admin": false, "elevation": "standard",
+      "groups": [ { "gid": 1000, "name": "alice" } ]
+    },
+    "facts": {
+      "suid_files": [
+        { "path": "/usr/bin/passwd", "name": "passwd", "setuid": true, "setgid": false, "owner": "root", "owner_uid": 0 },
+        { "path": "/usr/bin/find", "name": "find", "setuid": true, "setgid": false, "owner": "root", "owner_uid": 0 },
+        { "path": "/opt/tools/helper", "name": "helper", "setuid": true, "setgid": false, "owner": "root", "owner_uid": 0 },
+        { "path": "/usr/local/bin/backupd", "name": "backupd", "setuid": true, "setgid": false, "owner": "root", "owner_uid": 0 },
+        { "path": "/home/alice/sgid-tool", "name": "sgid-tool", "setuid": false, "setgid": true, "owner": "alice", "owner_uid": 1000 },
+        { "path": "/srv/private/tool", "name": "tool", "setuid": true, "setgid": false, "owner": "root", "owner_uid": 0 }
+      ],
+      "capabilities": [
+        { "path": "/usr/bin/ping", "name": "ping", "capabilities": "cap_net_raw=ep" },
+        { "path": "/usr/bin/python3.12", "name": "python3.12", "capabilities": "cap_setuid=ep" },
+        { "path": "/usr/lib/snapd/snap-confine", "name": "snap-confine", "capabilities": "cap_sys_admin,cap_setuid=p" },
+        { "path": "/opt/tools/tracer", "name": "tracer", "capabilities": "cap_net_admin=ep" },
+        { "path": "/usr/bin/all-caps", "name": "all-caps", "capabilities": "=ep" }
+      ],
+      "sensitive_files": [
+        { "kind": "passwd", "path": "/etc/passwd" },
+        { "kind": "shadow", "path": "/etc/shadow" },
+        { "kind": "shadow_backup", "path": "/var/backups/shadow.bak" },
+        { "kind": "sudoers_dir", "path": "/etc/sudoers.d" },
+        { "kind": "ld_preload", "path": "/etc/ld.so.preload" },
+        { "kind": "cron_dir", "path": "/etc/cron.d" },
+        { "kind": "profile_dir", "path": "/etc/profile.d" },
+        { "kind": "root_home", "path": "/root" }
+      ],
+      "nfs_exports": [
+        { "line": "/srv *(rw,no_root_squash)", "no_root_squash": true },
+        { "line": "/data 10.0.0.0/8(ro)", "no_root_squash": false }
+      ],
+      "ld_preload_libs": [ { "path": "/usr/lib/libfoo.so" } ],
+      "ld_so_dirs": [
+        { "source": "/etc/ld.so.conf.d/custom.conf", "dir": "/opt/lib" },
+        { "source": "/etc/ld.so.conf.d/x86_64-linux-gnu.conf", "dir": "/usr/lib/x86_64-linux-gnu" }
+      ],
+      "sockets": [
+        { "kind": "docker", "path": "/run/docker.sock" },
+        { "kind": "podman", "path": "/run/podman/podman.sock" }
+      ],
+      "boot_scripts": [
+        { "source": "/etc/init.d", "path": "/etc/init.d/legacy" },
+        { "source": "/etc/init.d", "path": "/etc/init.d/odd" },
+        { "source": "/etc/init.d", "path": "/etc/init.d/ssh" }
+      ],
+      "acls": {
+        "/": { "path": "/", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr": { "path": "/usr", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr/bin": { "path": "/usr/bin", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr/lib": { "path": "/usr/lib", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr/lib/x86_64-linux-gnu": { "path": "/usr/lib/x86_64-linux-gnu", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr/local": { "path": "/usr/local", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr/local/bin": { "path": "/usr/local/bin", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/opt": { "path": "/opt", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/opt/tools": { "path": "/opt/tools", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/opt/lib": { "path": "/opt/lib", "exists": true, "mode": "777", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/etc": { "path": "/etc", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/etc/init.d": { "path": "/etc/init.d", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/var": { "path": "/var", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/var/backups": { "path": "/var/backups", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/run": { "path": "/run", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/run/podman": { "path": "/run/podman", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/home": { "path": "/home", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/home/alice": { "path": "/home/alice", "exists": true, "mode": "750", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "directory" },
+        "/srv": { "path": "/srv", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/srv/private": { "path": "/srv/private", "exists": true, "mode": "700", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+
+        "/usr/bin/passwd": { "path": "/usr/bin/passwd", "exists": true, "mode": "4755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/usr/bin/find": { "path": "/usr/bin/find", "exists": true, "mode": "4755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/opt/tools/helper": { "path": "/opt/tools/helper", "exists": true, "mode": "4755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/usr/local/bin/backupd": { "path": "/usr/local/bin/backupd", "exists": true, "mode": "4777", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/home/alice/sgid-tool": { "path": "/home/alice/sgid-tool", "exists": true, "mode": "2755", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "regular file" },
+        "/srv/private/tool": { "path": "/srv/private/tool", "exists": true, "mode": "4777", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/usr/bin/ping": { "path": "/usr/bin/ping", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/usr/bin/python3.12": { "path": "/usr/bin/python3.12", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/opt/tools/tracer": { "path": "/opt/tools/tracer", "exists": true, "mode": "777", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/usr/bin/all-caps": { "path": "/usr/bin/all-caps", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/etc/passwd": { "path": "/etc/passwd", "exists": true, "mode": "646", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/etc/shadow": { "path": "/etc/shadow", "exists": true, "mode": "640", "uid": 0, "gid": 42, "owner": "root", "group": "shadow", "type": "regular file" },
+        "/var/backups/shadow.bak": { "path": "/var/backups/shadow.bak", "exists": true, "mode": "644", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/etc/sudoers.d": { "path": "/etc/sudoers.d", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/etc/ld.so.preload": { "path": "/etc/ld.so.preload", "exists": false },
+        "/etc/cron.d": { "path": "/etc/cron.d", "exists": true, "mode": "757", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/etc/profile.d": { "path": "/etc/profile.d", "exists": true, "mode": "775", "uid": 0, "gid": 1000, "owner": "root", "group": "alice", "type": "directory" },
+        "/root": { "path": "/root", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr/lib/libfoo.so": { "path": "/usr/lib/libfoo.so", "exists": true, "mode": "666", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/run/docker.sock": { "path": "/run/docker.sock", "exists": true, "mode": "660", "uid": 0, "gid": 999, "owner": "root", "group": "docker", "type": "socket" },
+        "/run/podman/podman.sock": { "path": "/run/podman/podman.sock", "exists": true, "mode": "666", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "socket" },
+        "/etc/init.d/legacy": { "path": "/etc/init.d/legacy", "exists": true, "mode": "775", "uid": 0, "gid": 1000, "owner": "root", "group": "alice", "type": "regular file" },
+        "/etc/init.d/odd": { "path": "/etc/init.d/odd", "exists": true, "mode": "607", "uid": 0, "gid": 1000, "owner": "root", "group": "alice", "type": "regular file" },
+        "/etc/init.d/ssh": { "path": "/etc/init.d/ssh", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" }
+      }
+    }
+  },
+  "runs": [
+    {
+      "perspective": "auto",
+      "expect": [
+        "PL-SUID-001|/usr/local/bin/backupd",
+        "PL-SUID-001|/home/alice/sgid-tool",
+        "PL-SUID-002|/usr/bin/find",
+        "PL-SUID-003|/opt/tools/helper",
+        "PL-SUID-003|/usr/local/bin/backupd",
+        "PL-SUID-003|/srv/private/tool",
+        "PL-CAP-001|/usr/bin/python3.12",
+        "PL-CAP-001|/usr/bin/all-caps",
+        "PL-CAP-002|/opt/tools/tracer",
+        "PL-FILE-001|/etc/passwd",
+        "PL-FILE-002|/var/backups/shadow.bak",
+        "PL-FILE-003|/etc/cron.d",
+        "PL-FILE-004|/etc/profile.d",
+        "PL-FILE-005|/root",
+        "PL-NFS-001|/srv *(rw,no_root_squash)",
+        "PL-LIB-001|/usr/lib/libfoo.so",
+        "PL-LIB-002|/opt/lib",
+        "PL-SOCK-001|/run/podman/podman.sock",
+        "PL-BOOT-001|/etc/init.d/legacy"
+      ]
+    }
+  ]
+}

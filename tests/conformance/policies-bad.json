@@ -1,0 +1,45 @@
+{
+  "name": "policies-bad",
+  "description": "Every policy rule's bad configuration at once.",
+  "collection": {
+    "privscope": { "tool": "privscope-collector", "version": "0.1.0", "schema_version": 1, "kind": "collection" },
+    "principal": { "user": "LAB\\alice", "sid": "S-1-5-21-1-2-3-1001", "is_admin": false, "elevation": "standard", "groups": [], "privileges": [] },
+    "facts": {
+      "policies": {
+        "always_install_elevated": { "hklm": 1, "hkcu": 1 },
+        "uac": {
+          "enable_lua": 0,
+          "consent_prompt_behavior_admin": 0,
+          "prompt_on_secure_desktop": 0,
+          "local_account_token_filter_policy": 1,
+          "filter_administrator_token": null
+        },
+        "lsa": { "run_as_ppl": null, "lm_compatibility_level": 2, "restrict_anonymous": 0, "no_lm_hash": 1 },
+        "wdigest_use_logon_credential": 1,
+        "point_and_print": {
+          "restrict_driver_install_to_admins": 0,
+          "no_warning_no_elevation_on_install": 1,
+          "update_prompt_settings": null
+        },
+        "wsus": { "wu_server": "http://wsus.lab.example:8530", "wu_status_server": "http://wsus.lab.example:8530", "use_wu_server": 1 }
+      }
+    }
+  },
+  "runs": [
+    {
+      "perspective": "auto",
+      "expect": [
+        "PS-POL-001|AlwaysInstallElevated",
+        "PS-POL-002|EnableLUA",
+        "PS-POL-003|ConsentPromptBehaviorAdmin",
+        "PS-POL-004|PromptOnSecureDesktop",
+        "PS-POL-005|LocalAccountTokenFilterPolicy",
+        "PS-POL-006|UseLogonCredential",
+        "PS-POL-007|RunAsPPL",
+        "PS-POL-008|PointAndPrint",
+        "PS-POL-009|WUServer",
+        "PS-POL-010|LmCompatibilityLevel"
+      ]
+    }
+  ]
+}

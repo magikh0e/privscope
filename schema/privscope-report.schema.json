@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://magikh0e.pl/privscope/privscope-report.schema.json",
+  "title": "privscope collection document",
+  "description": "Read-only configuration facts gathered from a Windows host for offline privilege-escalation hardening analysis. The collector records facts only; all vulnerability judgments are made by the analyzer. Filesystem ACLs are stored once in facts.acls, keyed by lower-cased path; every other record refers to paths.",
+  "type": "object",
+  "required": ["privscope", "run", "host", "principal", "facts"],
+  "additionalProperties": false,
+  "properties": {
+    "privscope": {
+      "type": "object",
+      "required": ["tool", "version", "schema_version", "kind"],
+      "additionalProperties": true,
+      "properties": {
+        "tool": { "const": "privscope-collector" },
+        "platform": { "const": "windows" },
+        "version": { "type": "string" },
+        "schema_version": { "type": "integer", "minimum": 1 },
+        "kind": { "const": "collection" },
+        "read_only": { "type": "boolean" }
+      }
+    },
+    "run": {
+      "type": "object",
+      "required": ["collected_at"],
+      "additionalProperties": true,
+      "properties": {
+        "collected_at": { "type": "string", "format": "date-time" },
+        "collector_user": { "type": "string" },
+        "ps_version": { "type": "string" },
+        "duration_ms": { "type": "integer" }
+      }
+    },
+    "host": {
+      "type": "object",
+      "description": "OS identity facts; used by the analyzer to map build/patch level to known issues.",
+      "additionalProperties": true,
+      "properties": {
+        "caption": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] },
+        "build_number": { "type": ["string", "null"] },
+        "ubr": { "type": ["integer", "null"] },
+        "display_version": { "type": ["string", "null"] },
+        "release_id": { "type": ["string", "null"] },
+        "architecture": { "type": ["string", "null"] },
+        "install_date": { "type": ["string", "null"] },
+        "hostname": { "type": ["string", "null"] },
+        "domain": { "type": ["string", "null"] },
+        "part_of_domain": { "type": ["boolean", "null"] }
+      }
+    },
+    "principal": {
+      "type": "object",
+      "description": "The security context the collector ran as. The analyzer joins these SIDs against facts.acls to decide access.",
+      "additionalProperties": true,
+      "properties": {
+        "user": { "type": ["string", "null"] },
+        "sid": { "type": ["string", "null"] },
+        "is_admin": { "type": ["boolean", "null"] },
+        "elevation": {
+          "description": "elevated = running with a full admin token; filtered_admin = an admin running without elevation (UAC split token); standard = not an admin.",
+          "enum": ["elevated", "filtered_admin", "standard", null]
+        },
+        "integrity": { "type": ["string", "null"] },
+        "integrity_sid": { "type": ["string", "null"] },
+        "groups": {
+          "type": "array",
+          "description": "Enabled token groups only (deny-only groups are left out, as they grant no access).",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sid": { "type": ["string", "null"] },
+              "name": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "privileges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": ["string", "null"] },
+              "description": { "type": ["string", "null"] },
+              "state": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "patches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "hotfix_id": { "type": ["string", "null"] },
+              "description": { "type": ["string", "null"] },
+              "installed_on": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": ["string", "null"] },
+              "display_name": { "type": ["string", "null"] },
+              "state": { "type": ["string", "null"] },
+              "start_mode": { "type": ["string", "null"] },
+              "run_as": { "type": ["string", "null"] },
+              "run_as_sid": { "type": ["string", "null"] },
+              "path_name_raw": { "type": ["string", "null"] },
+              "image_path": { "type": ["string", "null"] },
+              "image_dir": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "scheduled_tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": ["string", "null"] },
+              "path": { "type": ["string", "null"] },
+              "state": { "type": ["string", "null"] },
+              "run_as": { "type": ["string", "null"] },
+              "run_as_sid": { "type": ["string", "null"] },
+              "run_as_group": { "type": ["string", "null"] },
+              "run_as_group_sid": { "type": ["string", "null"] },
+              "logon_type": { "type": ["string", "null"] },
+              "run_level": { "type": ["string", "null"] },
+              "actions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "execute": { "type": ["string", "null"] },
+                    "arguments": { "type": ["string", "null"] },
+                    "image_path": { "type": ["string", "null"] },
+                    "image_dir": { "type": ["string", "null"] }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "autoruns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "hive": { "type": ["string", "null"] },
+              "name": { "type": ["string", "null"] },
+              "value": { "type": ["string", "null"] },
+              "image_path": { "type": ["string", "null"] },
+              "image_dir": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "path_dirs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "scope": { "enum": ["Machine", "User"] },
+              "dir": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "policies": {
+          "type": "object",
+          "description": "Raw security-relevant registry values. null means the value was absent (OS default applies).",
+          "additionalProperties": true
+        },
+        "credential_artifacts": {
+          "type": "array",
+          "description": "Presence and metadata of secret-bearing artifacts. Contents and stored password values are never recorded.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": ["string", "null"] },
+              "path": { "type": ["string", "null"] },
+              "size": { "type": ["integer", "null"] },
+              "last_write": { "type": ["string", "null"] },
+              "note": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "acls": {
+          "type": "object",
+          "description": "Every recorded filesystem ACL, keyed by lower-cased path. Includes the ancestor folders of each executable and PATH entry.",
+          "additionalProperties": { "$ref": "#/$defs/aclFacts" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "aclFacts": {
+      "type": "object",
+      "description": "Raw discretionary ACL of a filesystem object. Access-control entries are recorded verbatim; no writable/not-writable judgment is made here.",
+      "required": ["exists", "aces"],
+      "properties": {
+        "path": { "type": ["string", "null"] },
+        "exists": { "type": "boolean" },
+        "owner": { "type": ["string", "null"] },
+        "error": { "type": ["string", "null"] },
+        "aces": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "identity": { "type": ["string", "null"] },
+              "sid": { "type": ["string", "null"] },
+              "rights": { "type": ["string", "null"] },
+              "access": { "type": ["string", "null"] },
+              "inherited": { "type": ["boolean", "null"] },
+              "inherit_only": {
+                "type": ["boolean", "null"],
+                "description": "true when the entry applies only to child objects, not to this object."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

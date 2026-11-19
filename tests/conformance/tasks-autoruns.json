@@ -1,0 +1,93 @@
+{
+  "name": "tasks-autoruns",
+  "description": "Privileged vs unprivileged scheduled tasks ($parent fields, a one-element actions array serialized as an object, a COM-handler action with no program) and HKLM vs HKCU Run entries, including an unquoted one. Collected as a standard user.",
+  "collection": {
+    "privscope": { "tool": "privscope-collector", "version": "0.1.0", "schema_version": 1, "kind": "collection" },
+    "principal": {
+      "user": "LAB\\alice",
+      "sid": "S-1-5-21-1-2-3-1001",
+      "is_admin": false,
+      "elevation": "standard",
+      "groups": [
+        { "sid": "S-1-1-0", "name": "Everyone" },
+        { "sid": "S-1-5-32-545", "name": "BUILTIN\\Users" }
+      ],
+      "privileges": []
+    },
+    "facts": {
+      "scheduled_tasks": [
+        { "name": "Updater", "path": "\\Vendor\\", "state": "Ready", "run_as": "SYSTEM", "run_as_sid": "S-1-5-18", "run_as_group": null, "run_as_group_sid": null, "run_level": "Limited",
+          "actions": [ { "execute": "C:\\Vendor\\upd.exe", "arguments": null, "image_path": "C:\\Vendor\\upd.exe", "image_dir": "C:\\Vendor" } ] },
+        { "name": "UserTask", "path": "\\", "state": "Ready", "run_as": "alice", "run_as_sid": "S-1-5-21-1-2-3-1001", "run_as_group": null, "run_as_group_sid": null, "run_level": "Limited",
+          "actions": [ { "execute": "C:\\Users\\alice\\tool.exe", "arguments": null, "image_path": "C:\\Users\\alice\\tool.exe", "image_dir": "C:\\Users\\alice" } ] },
+        { "name": "AdminsGroup", "path": "\\", "state": "Ready", "run_as": null, "run_as_sid": null, "run_as_group": "Administrators", "run_as_group_sid": "S-1-5-32-544", "run_level": "Highest",
+          "actions": { "execute": "C:\\Shared\\job.exe", "arguments": null, "image_path": "C:\\Shared\\job.exe", "image_dir": "C:\\Shared" } },
+        { "name": "ElevatedSelf", "path": "\\", "state": "Ready", "run_as": "alice", "run_as_sid": "S-1-5-21-1-2-3-1001", "run_as_group": null, "run_as_group_sid": null, "run_level": "Highest",
+          "actions": [ { "execute": "C:\\Users\\alice\\elev.exe", "arguments": null, "image_path": "C:\\Users\\alice\\elev.exe", "image_dir": "C:\\Users\\alice" } ] },
+        { "name": "ComHandler", "path": "\\", "state": "Ready", "run_as": "SYSTEM", "run_as_sid": "S-1-5-18", "run_as_group": null, "run_as_group_sid": null, "run_level": "Highest",
+          "actions": [ { "execute": null, "arguments": null, "image_path": null, "image_dir": null } ] }
+      ],
+      "autoruns": [
+        { "hive": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", "name": "Tray", "value": "\"C:\\Tray\\tray.exe\" /bg", "image_path": "C:\\Tray\\tray.exe", "image_dir": "C:\\Tray" },
+        { "hive": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", "name": "Mine", "value": "C:\\Users\\alice\\mine.exe", "image_path": "C:\\Users\\alice\\mine.exe", "image_dir": "C:\\Users\\alice" },
+        { "hive": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", "name": "Helper", "value": "C:\\Program Files\\Help Desk\\helper.exe /min", "image_path": "C:\\Program Files\\Help Desk\\helper.exe", "image_dir": "C:\\Program Files\\Help Desk" }
+      ],
+      "acls": {
+        "c:\\vendor\\upd.exe": { "path": "C:\\Vendor\\upd.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\vendor": { "path": "C:\\Vendor", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "CreateFiles, ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\users\\alice": { "path": "C:\\Users\\alice", "exists": true, "owner": "LAB\\alice", "aces": [
+          { "identity": "LAB\\alice", "sid": "S-1-5-21-1-2-3-1001", "rights": "FullControl", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\users\\alice\\tool.exe": { "path": "C:\\Users\\alice\\tool.exe", "exists": true, "owner": "LAB\\alice", "aces": [
+          { "identity": "LAB\\alice", "sid": "S-1-5-21-1-2-3-1001", "rights": "FullControl", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\users\\alice\\elev.exe": { "path": "C:\\Users\\alice\\elev.exe", "exists": true, "owner": "LAB\\alice", "aces": [
+          { "identity": "LAB\\alice", "sid": "S-1-5-21-1-2-3-1001", "rights": "FullControl", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\users\\alice\\mine.exe": { "path": "C:\\Users\\alice\\mine.exe", "exists": true, "owner": "LAB\\alice", "aces": [
+          { "identity": "LAB\\alice", "sid": "S-1-5-21-1-2-3-1001", "rights": "FullControl", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\shared\\job.exe": { "path": "C:\\Shared\\job.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "Everyone", "sid": "S-1-1-0", "rights": "FullControl", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\tray\\tray.exe": { "path": "C:\\Tray\\tray.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\tray": { "path": "C:\\Tray", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "CreateFiles, ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\": { "path": "C:\\", "exists": true, "owner": "NT SERVICE\\TrustedInstaller", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\program files": { "path": "C:\\Program Files", "exists": true, "owner": "NT SERVICE\\TrustedInstaller", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "CreateFiles, ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\program files\\help desk": { "path": "C:\\Program Files\\Help Desk", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\program files\\help desk\\helper.exe": { "path": "C:\\Program Files\\Help Desk\\helper.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] }
+      }
+    }
+  },
+  "runs": [
+    {
+      "perspective": "auto",
+      "expect": [
+        "PS-TASK-001|\\Vendor\\Updater -> C:\\Vendor\\upd.exe",
+        "PS-TASK-002|\\Vendor\\Updater -> C:\\Vendor\\upd.exe",
+        "PS-TASK-001|\\AdminsGroup -> C:\\Shared\\job.exe",
+        "PS-TASK-001|\\ElevatedSelf -> C:\\Users\\alice\\elev.exe",
+        "PS-TASK-002|\\ElevatedSelf -> C:\\Users\\alice\\elev.exe",
+        "PS-AUTO-001|HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run\\Tray",
+        "PS-AUTO-003|HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run\\Tray",
+        "PS-AUTO-002|HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run\\Helper"
+      ]
+    }
+  ]
+}

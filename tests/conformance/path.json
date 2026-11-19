@@ -1,0 +1,60 @@
+{
+  "name": "path",
+  "description": "System vs user PATH entries: a writable folder, a missing folder whose parent allows folder creation, a missing folder under an inherit-only grant, a missing folder with no recorded ancestors (unknown is not a finding), and a normal System32. Collected as a standard user.",
+  "collection": {
+    "privscope": { "tool": "privscope-collector", "version": "0.1.0", "schema_version": 1, "kind": "collection" },
+    "principal": {
+      "user": "LAB\\alice",
+      "sid": "S-1-5-21-1-2-3-1001",
+      "is_admin": false,
+      "elevation": "standard",
+      "groups": [
+        { "sid": "S-1-1-0", "name": "Everyone" },
+        { "sid": "S-1-5-32-545", "name": "BUILTIN\\Users" },
+        { "sid": "S-1-5-11", "name": "NT AUTHORITY\\Authenticated Users" }
+      ],
+      "privileges": []
+    },
+    "facts": {
+      "path_dirs": [
+        { "scope": "Machine", "dir": "C:\\Tools\\bin" },
+        { "scope": "User", "dir": "C:\\Users\\alice\\bin" },
+        { "scope": "Machine", "dir": "C:\\Python27\\Scripts" },
+        { "scope": "Machine", "dir": "E:\\Gone\\bin" },
+        { "scope": "Machine", "dir": "C:\\Windows\\System32" },
+        { "scope": "Machine", "dir": "F:\\Unknown\\bin" }
+      ],
+      "acls": {
+        "c:\\tools\\bin": { "path": "C:\\Tools\\bin", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\users\\alice\\bin": { "path": "C:\\Users\\alice\\bin", "exists": true, "owner": "LAB\\alice", "aces": [
+          { "identity": "LAB\\alice", "sid": "S-1-5-21-1-2-3-1001", "rights": "FullControl", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\python27\\scripts": { "path": "C:\\Python27\\Scripts", "exists": false, "aces": [] },
+        "c:\\python27": { "path": "C:\\Python27", "exists": false, "aces": [] },
+        "c:\\": { "path": "C:\\", "exists": true, "owner": "NT SERVICE\\TrustedInstaller", "aces": [
+          { "identity": "NT AUTHORITY\\Authenticated Users", "sid": "S-1-5-11", "rights": "AppendData", "access": "Allow", "inherited": false, "inherit_only": false },
+          { "identity": "NT AUTHORITY\\Authenticated Users", "sid": "S-1-5-11", "rights": "-536805376", "access": "Allow", "inherited": false, "inherit_only": true }
+        ] },
+        "e:\\gone\\bin": { "path": "E:\\Gone\\bin", "exists": false, "aces": [] },
+        "e:\\gone": { "path": "E:\\Gone", "exists": false, "aces": [] },
+        "e:\\": { "path": "E:\\", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false },
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify", "access": "Allow", "inherited": false, "inherit_only": true }
+        ] },
+        "c:\\windows\\system32": { "path": "C:\\Windows\\System32", "exists": true, "owner": "NT SERVICE\\TrustedInstaller", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false },
+          { "identity": "CREATOR OWNER", "sid": "S-1-3-0", "rights": "268435456", "access": "Allow", "inherited": false, "inherit_only": true }
+        ] },
+        "f:\\unknown\\bin": { "path": "F:\\Unknown\\bin", "exists": false, "aces": [] }
+      }
+    }
+  },
+  "runs": [
+    {
+      "perspective": "auto",
+      "expect": [ "PS-PATH-001|C:\\Tools\\bin", "PS-PATH-002|C:\\Python27\\Scripts" ]
+    }
+  ]
+}

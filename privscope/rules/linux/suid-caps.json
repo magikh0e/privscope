@@ -1,0 +1,87 @@
+{
+  "rules": [
+    {
+      "id": "PL-SUID-001",
+      "title": "Setuid or setgid program can be overwritten",
+      "category": "suid",
+      "severity": "critical",
+      "select": "facts.suid_files[*]",
+      "where": { "writable": "path" },
+      "subject": "{path}",
+      "evidence": { "program": "path", "owner": "owner", "setuid": "setuid", "setgid": "setgid" },
+      "why": "A setuid program runs with its owner's rights (usually root) whoever starts it. Anyone who can overwrite it can make it do anything, as root.",
+      "fix": "Make it owned by root and writable only by root (chown root:root, chmod go-w), or reinstall the package it came from. Find out how the permissions changed.",
+      "refs": ["https://attack.mitre.org/techniques/T1548/001/"]
+    },
+    {
+      "id": "PL-SUID-002",
+      "title": "Setuid-root program that can run commands or write files",
+      "category": "suid",
+      "severity": "high",
+      "select": "facts.suid_files[*]",
+      "where": {
+        "all": [
+          { "field": "setuid", "eq": true },
+          { "field": "owner_uid", "eq": 0 },
+          { "field": "name", "regex": "^(ash|bash|busybox|csh|dash|fish|ksh|mksh|sh|tcsh|zsh|python[0-9.]*|perl[0-9.]*|ruby[0-9.]*|lua[0-9.]*|node|nodejs|php[0-9.]*|tclsh[0-9.]*|find|xargs|env|vi|vim|vim\\.basic|vim\\.tiny|rvim|nano|pico|ed|emacs|less|more|man|awk|gawk|mawk|nawk|sed|tee|cp|mv|dd|install|tar|zip|unzip|cpio|rsync|chmod|chown|chgrp|nmap|gdb|strace|ltrace|docker|git|screen|tmux|socat|nc|ncat|netcat|wget|curl|openssl|systemctl|journalctl)$" }
+        ]
+      },
+      "subject": "{path}",
+      "evidence": { "program": "path", "owner": "owner" },
+      "why": "This program is setuid root and can run other commands or write arbitrary files for whoever starts it, so any local user can turn it into root access. No standard distribution ships it setuid.",
+      "fix": "Remove the setuid bit (chmod u-s <program>) and find out who set it and why.",
+      "refs": ["https://attack.mitre.org/techniques/T1548/001/"]
+    },
+    {
+      "id": "PL-SUID-003",
+      "title": "Setuid-root program outside the system folders",
+      "category": "suid",
+      "severity": "medium",
+      "select": "facts.suid_files[*]",
+      "where": {
+        "all": [
+          { "field": "setuid", "eq": true },
+          { "field": "owner_uid", "eq": 0 },
+          { "not": { "field": "path", "regex": "^/(usr/)?(s?bin|lib|lib32|lib64|libexec)/" } },
+          { "not": { "field": "name", "regex": "^(ash|bash|busybox|csh|dash|fish|ksh|mksh|sh|tcsh|zsh|python[0-9.]*|perl[0-9.]*|ruby[0-9.]*|lua[0-9.]*|node|nodejs|php[0-9.]*|tclsh[0-9.]*|find|xargs|env|vi|vim|vim\\.basic|vim\\.tiny|rvim|nano|pico|ed|emacs|less|more|man|awk|gawk|mawk|nawk|sed|tee|cp|mv|dd|install|tar|zip|unzip|cpio|rsync|chmod|chown|chgrp|nmap|gdb|strace|ltrace|docker|git|screen|tmux|socat|nc|ncat|netcat|wget|curl|openssl|systemctl|journalctl)$" } }
+        ]
+      },
+      "subject": "{path}",
+      "evidence": { "program": "path", "owner": "owner" },
+      "why": "Setuid-root programs outside the system folders are rare. They are often left over from testing or installed by hand, and any bug in one is a way to root.",
+      "fix": "Check which package or vendor it belongs to. If nothing needs it, remove the setuid bit (chmod u-s) or the program.",
+      "refs": ["https://attack.mitre.org/techniques/T1548/001/"]
+    },
+    {
+      "id": "PL-CAP-001",
+      "title": "Program has a capability that leads to root",
+      "category": "capabilities",
+      "severity": "high",
+      "select": "facts.capabilities[*]",
+      "where": {
+        "all": [
+          { "field": "capabilities", "regex": "cap_(setuid|setgid|dac_override|dac_read_search|chown|fowner|setfcap|sys_admin|sys_ptrace|sys_module|sys_rawio|bpf)|^=e?p" },
+          { "not": { "field": "path", "regex": "^/usr/lib/snapd/snap-confine$" } }
+        ]
+      },
+      "subject": "{path}",
+      "evidence": { "program": "path", "capabilities": "capabilities" },
+      "why": "These file capabilities let a program change its identity, bypass file permissions, trace other processes or load kernel code, which amounts to root for whoever can make it misbehave.",
+      "fix": "Remove the capability (setcap -r <program>) unless the program needs it and is trusted to use it narrowly. Ubuntu's snap-confine is expected to have these and isn't reported.",
+      "refs": ["https://man7.org/linux/man-pages/man7/capabilities.7.html"]
+    },
+    {
+      "id": "PL-CAP-002",
+      "title": "Program with file capabilities can be overwritten",
+      "category": "capabilities",
+      "severity": "critical",
+      "select": "facts.capabilities[*]",
+      "where": { "writable": "path" },
+      "subject": "{path}",
+      "evidence": { "program": "path", "capabilities": "capabilities" },
+      "why": "Anyone who can overwrite this program gets its capabilities. Note that rewriting the file normally drops them, but replacing its contents in place does not always, and the permissions are wrong either way.",
+      "fix": "Make it owned by root and writable only by root, or reinstall the package it came from.",
+      "refs": ["https://man7.org/linux/man-pages/man7/capabilities.7.html"]
+    }
+  ]
+}

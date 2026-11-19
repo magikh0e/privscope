@@ -1,0 +1,231 @@
+{
+  "rules": [
+    {
+      "id": "PL-PATH-001",
+      "title": "Writable folder in root's PATH",
+      "category": "path",
+      "severity": "high",
+      "select": "facts.path_dirs[*]",
+      "where": {
+        "all": [
+          {
+            "any": [
+              { "field": "scope", "in": ["sudo", "cron", "environment", "root_login"] },
+              { "all": [ { "field": "scope", "eq": "process" }, { "field": "$root.principal.is_admin", "eq": true } ] }
+            ]
+          },
+          { "not": { "all": [ { "field": "$root.host.wsl", "eq": true }, { "field": "dir", "regex": "^/mnt/[a-z]/" } ] } },
+          { "writable": "dir" }
+        ]
+      },
+      "subject": "{scope}: {dir}",
+      "evidence": { "folder": "dir", "PATH of": "scope" },
+      "why": "Root looks up commands in these folders. A program planted in a writable one under the name of a command root runs, ahead of the real one or in place of a missing one, runs as root.",
+      "fix": "Remove the folder from root's PATH (sudo secure_path, /etc/environment, /etc/login.defs, the PATH line in /etc/crontab) or make it owned by root and writable only by root.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/007/"]
+    },
+    {
+      "id": "PL-PATH-002",
+      "title": "Missing folder in root's PATH can be created by non-root users",
+      "category": "path",
+      "severity": "high",
+      "select": "facts.path_dirs[*]",
+      "where": {
+        "all": [
+          {
+            "any": [
+              { "field": "scope", "in": ["sudo", "cron", "environment", "root_login"] },
+              { "all": [ { "field": "scope", "eq": "process" }, { "field": "$root.principal.is_admin", "eq": true } ] }
+            ]
+          },
+          { "not": { "all": [ { "field": "$root.host.wsl", "eq": true }, { "field": "dir", "regex": "^/mnt/[a-z]/" } ] } },
+          { "creatable": "dir" }
+        ]
+      },
+      "subject": "{scope}: {dir}",
+      "evidence": { "folder": "dir", "PATH of": "scope" },
+      "why": "The folder doesn't exist, but non-root users can create it, and then plant commands that root will find through its PATH.",
+      "fix": "Remove the stale entry from root's PATH, or create the folder owned by root and writable only by root.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/007/"]
+    },
+    {
+      "id": "PL-PATH-003",
+      "title": "Relative or empty entry in root's PATH",
+      "category": "path",
+      "severity": "medium",
+      "select": "facts.path_dirs[*]",
+      "where": {
+        "all": [
+          {
+            "any": [
+              { "field": "scope", "in": ["sudo", "cron", "environment", "root_login"] },
+              { "all": [ { "field": "scope", "eq": "process" }, { "field": "$root.principal.is_admin", "eq": true } ] }
+            ]
+          },
+          { "not": { "all": [ { "field": "$root.host.wsl", "eq": true }, { "field": "dir", "regex": "^/mnt/[a-z]/" } ] } },
+          { "not": { "field": "dir", "regex": "^/" } }
+        ]
+      },
+      "subject": "{scope}: {dir}",
+      "evidence": { "entry": "dir", "PATH of": "scope" },
+      "why": "An empty or relative PATH entry means 'the current folder', so root runs whatever program of the right name sits in whichever folder it happens to be working in.",
+      "fix": "Remove the entry (look for '.', a leading or trailing ':', or '::').",
+      "refs": ["https://attack.mitre.org/techniques/T1574/007/"]
+    },
+    {
+      "id": "PL-WSL-001",
+      "title": "Windows folders are in root's PATH (WSL)",
+      "category": "path",
+      "severity": "low",
+      "select": "host",
+      "where": { "field": "wsl_windows_path", "eq": true },
+      "subject": "appendWindowsPath",
+      "evidence": { "kernel": "version" },
+      "why": "WSL appends the Windows PATH to every Linux account's PATH, root's included. Every account in the distro, and anything running as your Windows user, can write to those folders, so a command root can't find in the Linux folders may run from there instead.",
+      "fix": "Set appendWindowsPath = false under [interop] in /etc/wsl.conf, then run wsl --shutdown. Add the few Windows tools you need to PATH by hand.",
+      "refs": ["https://learn.microsoft.com/en-us/windows/wsl/wsl-config#interop-settings"]
+    },
+    {
+      "id": "PL-FILE-001",
+      "title": "Account or authentication file can be modified",
+      "category": "files",
+      "severity": "critical",
+      "select": "facts.sensitive_files[*]",
+      "where": {
+        "all": [
+          { "field": "kind", "in": ["passwd", "group", "shadow", "gshadow", "sudoers", "sudoers_dir", "pam_dir"] },
+          { "writable": "path" }
+        ]
+      },
+      "subject": "{path}",
+      "evidence": { "file": "path", "kind": "kind" },
+      "why": "These files decide who the accounts are, what their passwords are and who may use sudo. Whoever can change one can give themselves root.",
+      "fix": "Restore the standard ownership and modes: root:root 644 for passwd and group, root:shadow 640 (or 600) for shadow and gshadow, root:root 440 for sudoers, root:root 755 for /etc/sudoers.d and /etc/pam.d.",
+      "refs": ["https://attack.mitre.org/techniques/T1548/003/"]
+    },
+    {
+      "id": "PL-FILE-002",
+      "title": "Password hashes are readable",
+      "category": "files",
+      "severity": "high",
+      "select": "facts.sensitive_files[*]",
+      "where": {
+        "all": [
+          { "field": "kind", "in": ["shadow", "gshadow", "shadow_backup"] },
+          { "readable": "path" }
+        ]
+      },
+      "subject": "{path}",
+      "evidence": { "file": "path", "kind": "kind" },
+      "why": "Anyone who can read the password hashes can try to crack them offline, including root's.",
+      "fix": "Make the file owned by root (group shadow on Debian-family systems) and not readable by others: chmod 640 or 600. Delete stale backup copies.",
+      "refs": ["https://attack.mitre.org/techniques/T1003/008/"]
+    },
+    {
+      "id": "PL-FILE-003",
+      "title": "Configuration that root runs automatically can be modified",
+      "category": "files",
+      "severity": "critical",
+      "select": "facts.sensitive_files[*]",
+      "where": {
+        "all": [
+          { "field": "kind", "in": ["crontab", "cron_dir", "ld_preload", "ld_so_conf", "ld_so_conf_dir", "systemd_dir", "initd_dir"] },
+          { "writable": "path" }
+        ]
+      },
+      "subject": "{path}",
+      "evidence": { "file": "path", "kind": "kind" },
+      "why": "Root reads this to decide what to run on a schedule, at boot, or inside every program it starts (the dynamic loader settings). Whoever can change it runs code as root.",
+      "fix": "Make it owned by root and writable only by root (chown root:root, chmod 644 for files, 755 for folders).",
+      "refs": ["https://attack.mitre.org/techniques/T1574/006/"]
+    },
+    {
+      "id": "PL-FILE-004",
+      "title": "Shell startup file used by root can be modified",
+      "category": "files",
+      "severity": "high",
+      "select": "facts.sensitive_files[*]",
+      "where": {
+        "all": [
+          { "field": "kind", "in": ["profile", "profile_dir", "bashrc", "environment"] },
+          { "writable": "path" }
+        ]
+      },
+      "subject": "{path}",
+      "evidence": { "file": "path", "kind": "kind" },
+      "why": "Login shells, including root's, run these files at startup. Whoever can change one runs code as root the next time an administrator logs in or opens a root shell.",
+      "fix": "Make it owned by root and writable only by root (chown root:root, chmod 644 for files, 755 for /etc/profile.d).",
+      "refs": ["https://attack.mitre.org/techniques/T1546/004/"]
+    },
+    {
+      "id": "PL-FILE-005",
+      "title": "root's home folder is readable by other users",
+      "category": "files",
+      "severity": "medium",
+      "select": "facts.sensitive_files[*]",
+      "where": {
+        "all": [
+          { "field": "kind", "eq": "root_home" },
+          { "readable": "path" }
+        ]
+      },
+      "subject": "{path}",
+      "evidence": { "folder": "path" },
+      "why": "root's home holds its shell history, SSH keys and other credentials. Other users shouldn't be able to list it.",
+      "fix": "chmod 700 /root.",
+      "refs": ["https://attack.mitre.org/techniques/T1552/001/"]
+    },
+    {
+      "id": "PL-NFS-001",
+      "title": "NFS export disables root squashing",
+      "category": "nfs",
+      "severity": "high",
+      "select": "facts.nfs_exports[*]",
+      "where": { "field": "no_root_squash", "eq": true },
+      "subject": "{line}",
+      "evidence": { "export": "line" },
+      "why": "With no_root_squash, root on any client that mounts this export is also root on its files, so a compromised or untrusted client can plant setuid programs that run as root here.",
+      "fix": "Remove no_root_squash (root_squash is the default) and re-export with exportfs -ra.",
+      "refs": ["https://man7.org/linux/man-pages/man5/exports.5.html"]
+    },
+    {
+      "id": "PL-LIB-001",
+      "title": "Library preloaded into every program can be overwritten",
+      "category": "libraries",
+      "severity": "critical",
+      "select": "facts.ld_preload_libs[*]",
+      "where": { "writable": "path" },
+      "subject": "{path}",
+      "evidence": { "library": "path" },
+      "why": "Libraries listed in /etc/ld.so.preload are loaded into every program, setuid-root programs included. Whoever can overwrite one runs code as root.",
+      "fix": "Make the library owned by root and writable only by root, and check that it belongs there: a preload entry is unusual on most systems.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/006/"]
+    },
+    {
+      "id": "PL-LIB-002",
+      "title": "Library folder in the loader configuration lets non-root users add files",
+      "category": "libraries",
+      "severity": "high",
+      "select": "facts.ld_so_dirs[*]",
+      "where": { "writable": "dir" },
+      "subject": "{dir}",
+      "evidence": { "folder": "dir", "listed in": "source" },
+      "why": "Programs, including ones that run as root, load shared libraries from the folders in the loader configuration. A library planted under the right name runs inside them.",
+      "fix": "Make the folder owned by root and writable only by root, or remove it from the loader configuration and run ldconfig.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/006/"]
+    },
+    {
+      "id": "PL-SOCK-001",
+      "title": "Container engine socket is writable",
+      "category": "sockets",
+      "severity": "high",
+      "select": "facts.sockets[*]",
+      "where": { "writable": "path" },
+      "subject": "{path}",
+      "evidence": { "socket": "path", "engine": "kind" },
+      "why": "Whoever can talk to this socket controls a container engine running as root, and can start a container with the host's filesystem mounted. That is root on the host.",
+      "fix": "Keep the socket root:root (or root:docker with only administrators in the docker group), mode 660. Consider rootless Docker or Podman.",
+      "refs": ["https://docs.docker.com/engine/security/#docker-daemon-attack-surface"]
+    }
+  ]
+}

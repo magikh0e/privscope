@@ -1,0 +1,81 @@
+{
+  "rules": [
+    {
+      "id": "PS-TOK-001",
+      "title": "Account holds a privilege that leads to SYSTEM",
+      "category": "principal",
+      "severity": "high",
+      "select": "principal.privileges[*]",
+      "where": {
+        "all": [
+          {
+            "field": "name",
+            "in": [
+              "SeImpersonatePrivilege",
+              "SeAssignPrimaryTokenPrivilege",
+              "SeBackupPrivilege",
+              "SeRestorePrivilege",
+              "SeDebugPrivilege",
+              "SeTakeOwnershipPrivilege",
+              "SeLoadDriverPrivilege",
+              "SeTcbPrivilege",
+              "SeCreateTokenPrivilege",
+              "SeManageVolumePrivilege"
+            ]
+          },
+          { "field": "$root.principal.is_admin", "eq": false }
+        ]
+      },
+      "subject": "{name}",
+      "evidence": {
+        "privilege": "name",
+        "state": "state",
+        "account": "$root.principal.user"
+      },
+      "why": "These privileges get around access checks. SeImpersonate and SeAssignPrimaryToken can turn a coerced SYSTEM authentication into a SYSTEM process; SeBackup and SeRestore read and write any file; SeDebug opens any process; SeTakeOwnership takes any object; SeLoadDriver loads kernel code. A privilege listed as Disabled can still be enabled by the account itself. Service accounts (IIS, SQL Server) often hold SeImpersonate, so compromising the service compromises the machine.",
+      "fix": "Remove the right under Local Security Policy > User Rights Assignment (or by GPO) unless the account really needs it. For services, use virtual or managed service accounts and keep the service patched.",
+      "refs": ["https://attack.mitre.org/techniques/T1134/"]
+    },
+    {
+      "id": "PS-GRP-001",
+      "title": "Account is in an admin-equivalent group",
+      "category": "principal",
+      "severity": "high",
+      "select": "principal.groups[*]",
+      "where": {
+        "all": [
+          {
+            "any": [
+              { "field": "sid", "in": ["S-1-5-32-548", "S-1-5-32-549", "S-1-5-32-551", "S-1-5-32-578"] },
+              { "field": "name", "regex": "(^|\\\\)DnsAdmins$" }
+            ]
+          },
+          { "field": "$root.principal.is_admin", "eq": false }
+        ]
+      },
+      "subject": "{name}",
+      "evidence": { "group": "name", "sid": "sid", "account": "$root.principal.user" },
+      "why": "Backup Operators can read and write any file, registry hives included; Server Operators and Account Operators can change services and accounts; Hyper-V Administrators control VMs and their disks; DnsAdmins can make the DNS service load a DLL. Each is a short path to SYSTEM or domain admin.",
+      "fix": "Remove the membership unless the account really needs it, and treat remaining members as administrators.",
+      "refs": ["https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-security-groups"]
+    },
+    {
+      "id": "PS-GRP-002",
+      "title": "Account can control the Docker engine",
+      "category": "principal",
+      "severity": "medium",
+      "select": "principal.groups[*]",
+      "where": {
+        "all": [
+          { "field": "name", "regex": "(^|\\\\)docker-users$" },
+          { "field": "$root.principal.is_admin", "eq": false }
+        ]
+      },
+      "subject": "{name}",
+      "evidence": { "group": "name", "sid": "sid", "account": "$root.principal.user" },
+      "why": "Members of docker-users can drive the Docker engine, which runs with high privileges. Depending on the backend and its settings, a container can be given access to host files, so membership should be treated as admin-equivalent.",
+      "fix": "Only add people who are already administrators to docker-users, and remove anyone who doesn't use Docker.",
+      "refs": ["https://docs.docker.com/engine/security/#docker-daemon-attack-surface"]
+    }
+  ]
+}

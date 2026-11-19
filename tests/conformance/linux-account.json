@@ -1,0 +1,87 @@
+{
+  "name": "linux-account",
+  "description": "Linux, collected as a standard user (alice) who is in docker, shadow and adm: risky groups, a container socket reachable through group membership, sudo rules from sudo -n -l and from sudoers, sudo defaults, and credential files (another user's readable key and AWS file, alice's own key and history, a key behind a home folder others can't enter).",
+  "collection": {
+    "privscope": { "tool": "privscope-collector", "platform": "linux", "version": "0.1.0", "schema_version": 1, "kind": "collection" },
+    "host": { "hostname": "lab", "wsl": false, "wsl_windows_path": false },
+    "principal": {
+      "user": "alice", "uid": 1000, "gid": 1000, "is_admin": false, "elevation": "standard",
+      "groups": [
+        { "gid": 1000, "name": "alice" },
+        { "gid": 999, "name": "docker" },
+        { "gid": 42, "name": "shadow" },
+        { "gid": 4, "name": "adm" }
+      ]
+    },
+    "facts": {
+      "sockets": [ { "kind": "docker", "path": "/run/docker.sock" } ],
+      "sudo_rules": [
+        { "who": "(this account)", "source": "sudo -n -l", "runas": "root", "nopasswd": true, "command": "ALL", "command_path": null, "command_name": "ALL", "raw": "(root) NOPASSWD: ALL" },
+        { "who": "(this account)", "source": "sudo -n -l", "runas": "root", "nopasswd": true, "command": "/usr/bin/find", "command_path": "/usr/bin/find", "command_name": "find", "raw": "(root) NOPASSWD: /usr/bin/find" },
+        { "who": "(this account)", "source": "sudo -n -l", "runas": "root", "nopasswd": false, "command": "/usr/bin/vim", "command_path": "/usr/bin/vim", "command_name": "vim", "raw": "(root) /usr/bin/vim" },
+        { "who": "%ops", "source": "/etc/sudoers", "runas": "root", "nopasswd": false, "command": "/opt/scripts/deploy.sh", "command_path": "/opt/scripts/deploy.sh", "command_name": "deploy.sh", "raw": "%ops ALL=(root) /opt/scripts/deploy.sh" },
+        { "who": "(this account)", "source": "sudo -n -l", "runas": "root", "nopasswd": true, "command": "/bin/cat /var/log/*", "command_path": "/bin/cat", "command_name": "cat", "raw": "(root) NOPASSWD: /bin/cat /var/log/*" },
+        { "who": "(this account)", "source": "sudo -n -l", "runas": "root", "nopasswd": true, "command": "sudoedit /etc/motd", "command_path": null, "command_name": "sudoedit", "raw": "(root) NOPASSWD: sudoedit /etc/motd" }
+      ],
+      "sudo_defaults": [
+        { "source": "sudo -n -l", "setting": "env_keep+=LD_PRELOAD" },
+        { "source": "sudo -n -l", "setting": "env_reset" },
+        { "source": "/etc/sudoers", "setting": "!env_reset" }
+      ],
+      "credential_artifacts": [
+        { "type": "ssh_private_key", "path": "/home/bob/.ssh/id_ed25519", "owner": "bob", "owner_uid": 1001 },
+        { "type": "ssh_private_key", "path": "/home/alice/.ssh/id_rsa", "owner": "alice", "owner_uid": 1000 },
+        { "type": "ssh_private_key", "path": "/home/carol/.ssh/id_rsa", "owner": "carol", "owner_uid": 1002 },
+        { "type": "aws_credentials", "path": "/home/bob/.aws/credentials", "owner": "bob", "owner_uid": 1001 },
+        { "type": "shell_history", "path": "/home/alice/.bash_history", "owner": "alice", "owner_uid": 1000 },
+        { "type": "shell_history", "path": "/home/bob/.bash_history", "owner": "bob", "owner_uid": 1001 }
+      ],
+      "acls": {
+        "/": { "path": "/", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/run": { "path": "/run", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/run/docker.sock": { "path": "/run/docker.sock", "exists": true, "mode": "660", "uid": 0, "gid": 999, "owner": "root", "group": "docker", "type": "socket" },
+        "/usr": { "path": "/usr", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr/bin": { "path": "/usr/bin", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr/bin/find": { "path": "/usr/bin/find", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/usr/bin/vim": { "path": "/usr/bin/vim", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/opt": { "path": "/opt", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/opt/scripts": { "path": "/opt/scripts", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/opt/scripts/deploy.sh": { "path": "/opt/scripts/deploy.sh", "exists": true, "mode": "777", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/home": { "path": "/home", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/home/alice": { "path": "/home/alice", "exists": true, "mode": "750", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "directory" },
+        "/home/alice/.ssh": { "path": "/home/alice/.ssh", "exists": true, "mode": "700", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "directory" },
+        "/home/alice/.ssh/id_rsa": { "path": "/home/alice/.ssh/id_rsa", "exists": true, "mode": "600", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "regular file" },
+        "/home/alice/.bash_history": { "path": "/home/alice/.bash_history", "exists": true, "mode": "600", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "regular file" },
+        "/home/bob": { "path": "/home/bob", "exists": true, "mode": "755", "uid": 1001, "gid": 1001, "owner": "bob", "group": "bob", "type": "directory" },
+        "/home/bob/.ssh": { "path": "/home/bob/.ssh", "exists": true, "mode": "755", "uid": 1001, "gid": 1001, "owner": "bob", "group": "bob", "type": "directory" },
+        "/home/bob/.ssh/id_ed25519": { "path": "/home/bob/.ssh/id_ed25519", "exists": true, "mode": "644", "uid": 1001, "gid": 1001, "owner": "bob", "group": "bob", "type": "regular file" },
+        "/home/bob/.aws": { "path": "/home/bob/.aws", "exists": true, "mode": "755", "uid": 1001, "gid": 1001, "owner": "bob", "group": "bob", "type": "directory" },
+        "/home/bob/.aws/credentials": { "path": "/home/bob/.aws/credentials", "exists": true, "mode": "644", "uid": 1001, "gid": 1001, "owner": "bob", "group": "bob", "type": "regular file" },
+        "/home/bob/.bash_history": { "path": "/home/bob/.bash_history", "exists": true, "mode": "640", "uid": 1001, "gid": 1001, "owner": "bob", "group": "bob", "type": "regular file" },
+        "/home/carol": { "path": "/home/carol", "exists": true, "mode": "700", "uid": 1002, "gid": 1002, "owner": "carol", "group": "carol", "type": "directory" },
+        "/home/carol/.ssh": { "path": "/home/carol/.ssh", "exists": true, "mode": "755", "uid": 1002, "gid": 1002, "owner": "carol", "group": "carol", "type": "directory" },
+        "/home/carol/.ssh/id_rsa": { "path": "/home/carol/.ssh/id_rsa", "exists": true, "mode": "644", "uid": 1002, "gid": 1002, "owner": "carol", "group": "carol", "type": "regular file" }
+      }
+    }
+  },
+  "runs": [
+    {
+      "perspective": "auto",
+      "expect": [
+        "PL-GRP-001|docker",
+        "PL-GRP-002|shadow",
+        "PL-GRP-003|adm",
+        "PL-SOCK-001|/run/docker.sock",
+        "PL-SUDO-001|(this account) (sudo -n -l): (root) NOPASSWD: ALL",
+        "PL-SUDO-002|(this account) (sudo -n -l): /usr/bin/find",
+        "PL-SUDO-003|%ops (/etc/sudoers): /opt/scripts/deploy.sh",
+        "PL-SUDO-004|(this account) (sudo -n -l): /bin/cat /var/log/*",
+        "PL-SUDO-005|sudo -n -l: env_keep+=LD_PRELOAD",
+        "PL-SUDO-005|/etc/sudoers: !env_reset",
+        "PL-CRED-001|/home/bob/.ssh/id_ed25519",
+        "PL-CRED-002|/home/bob/.aws/credentials",
+        "PL-CRED-003|/home/alice/.bash_history"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "rules": [
+    {
+      "id": "PS-AUTO-001",
+      "title": "Machine-wide logon program can be overwritten",
+      "category": "autoruns",
+      "severity": "high",
+      "select": "facts.autoruns[*]",
+      "where": {
+        "all": [
+          { "field": "hive", "regex": "^HKLM:" },
+          { "writable": "image_path" }
+        ]
+      },
+      "subject": "{hive}\\{name}",
+      "evidence": {
+        "entry": "name",
+        "key": "hive",
+        "command": "value",
+        "program": "image_path"
+      },
+      "why": "HKLM Run entries start in every user's session at logon, administrators included. Anyone who can overwrite the program runs code as the next person to log on.",
+      "fix": "Restrict the program's ACL so only SYSTEM and Administrators can write it, or reinstall it under Program Files. If nothing needs it at logon, delete the Run entry.",
+      "refs": ["https://attack.mitre.org/techniques/T1547/001/"]
+    },
+    {
+      "id": "PS-AUTO-002",
+      "title": "Machine-wide logon entry has an unquoted path that can be hijacked",
+      "category": "autoruns",
+      "severity": "high",
+      "select": "facts.autoruns[*]",
+      "where": {
+        "all": [
+          { "field": "hive", "regex": "^HKLM:" },
+          { "not": { "field": "value", "regex": "^\\s*\"" } },
+          { "unquoted_hijack": "image_path" }
+        ]
+      },
+      "subject": "{hive}\\{name}",
+      "evidence": {
+        "entry": "name",
+        "key": "hive",
+        "command": "value"
+      },
+      "why": "The command has spaces and no quotes, so Windows first tries each space-separated prefix as a program. One of those locations is writable, so a program placed there runs as whoever logs on next, administrators included.",
+      "fix": "Quote the program path in the Run value, e.g. \"C:\\Program Files\\Some App\\app.exe\" /min, and remove write access from the folder named in the evidence.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/009/"]
+    },
+    {
+      "id": "PS-AUTO-003",
+      "title": "Machine-wide logon program's folder lets non-admins add files",
+      "category": "autoruns",
+      "severity": "medium",
+      "select": "facts.autoruns[*]",
+      "where": {
+        "all": [
+          { "field": "hive", "regex": "^HKLM:" },
+          { "writable": "image_dir" }
+        ]
+      },
+      "subject": "{hive}\\{name}",
+      "evidence": {
+        "entry": "name",
+        "key": "hive",
+        "program folder": "image_dir"
+      },
+      "why": "Windows looks in a program's own folder first when it loads a DLL. A DLL planted here runs inside the logon program of every user who logs on, administrators included.",
+      "fix": "Remove 'create files / write data' rights for non-admin accounts on the folder, or reinstall the program under Program Files.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/001/"]
+    },
+    {
+      "id": "PS-AUTO-004",
+      "title": "Machine-wide logon entry runs a missing program that non-admins can create",
+      "category": "autoruns",
+      "severity": "high",
+      "select": "facts.autoruns[*]",
+      "where": {
+        "all": [
+          { "field": "hive", "regex": "^HKLM:" },
+          { "creatable_file": "image_path" }
+        ]
+      },
+      "subject": "{hive}\\{name}",
+      "evidence": {
+        "entry": "name",
+        "key": "hive",
+        "command": "value",
+        "program": "image_path"
+      },
+      "why": "The Run entry starts a program that no longer exists, in a place where non-admins can create it. A program placed there runs as whoever logs on next, administrators included.",
+      "fix": "Delete the stale Run entry (from an elevated prompt), or reinstall the program into a protected folder.",
+      "refs": ["https://attack.mitre.org/techniques/T1547/001/"]
+    }
+  ]
+}

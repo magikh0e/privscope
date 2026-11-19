@@ -1,0 +1,124 @@
+{
+  "rules": [
+    {
+      "id": "PS-SVC-001",
+      "title": "Service executable can be overwritten",
+      "category": "services",
+      "severity": "high",
+      "select": "facts.services[*]",
+      "where": {
+        "all": [
+          { "writable": "image_path" },
+          { "field": "start_mode", "ne": "Disabled" }
+        ]
+      },
+      "subject": "{name}",
+      "evidence": {
+        "service": "name",
+        "executable": "image_path",
+        "runs as": "run_as",
+        "start mode": "start_mode",
+        "state": "state"
+      },
+      "why": "Anyone who can overwrite a service's executable gets their code run under the service's account (usually LocalSystem) the next time the service starts or the machine reboots.",
+      "fix": "Remove write, modify and full-control entries for non-admin accounts from the executable, e.g. icacls \"<executable>\" /remove:g \"BUILTIN\\Users\" (use the account named in the evidence). Service binaries should be writable only by SYSTEM, Administrators and TrustedInstaller. If an installer set these rights, a reinstall will put them back, so report it to the vendor too.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/010/"]
+    },
+    {
+      "id": "PS-SVC-002",
+      "title": "Service folder lets non-admins add files",
+      "category": "services",
+      "severity": "high",
+      "select": "facts.services[*]",
+      "where": {
+        "all": [
+          { "writable": "image_dir" },
+          { "field": "start_mode", "ne": "Disabled" }
+        ]
+      },
+      "subject": "{name}",
+      "evidence": {
+        "service": "name",
+        "folder": "image_dir",
+        "runs as": "run_as",
+        "start mode": "start_mode",
+        "state": "state"
+      },
+      "why": "Windows looks in a program's own folder first when it loads a DLL. A DLL dropped into this folder under the name of one the service loads runs under the service's account.",
+      "fix": "Remove 'create files / write data' rights for non-admin accounts on the folder (icacls \"<folder>\" /remove:g <account>). Programs installed outside Program Files (e.g. C:\\Tools\\...) inherit Authenticated Users: Modify from C:\\, so install services under Program Files instead.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/001/"]
+    },
+    {
+      "id": "PS-SVC-003",
+      "title": "Unquoted service path can be hijacked",
+      "category": "services",
+      "severity": "high",
+      "select": "facts.services[*]",
+      "where": {
+        "all": [
+          { "not": { "field": "path_name_raw", "regex": "^\\s*\"" } },
+          { "unquoted_hijack": "image_path" },
+          { "field": "start_mode", "ne": "Disabled" }
+        ]
+      },
+      "subject": "{name}",
+      "evidence": {
+        "service": "name",
+        "command": "path_name_raw",
+        "runs as": "run_as",
+        "start mode": "start_mode"
+      },
+      "why": "The service's path has spaces and no quotes, so Windows first tries each space-separated prefix as a program (C:\\Program.exe, C:\\Program Files\\Some.exe, ...). One of those locations is writable, so a program placed there runs under the service's account.",
+      "fix": "Quote the path in HKLM\\SYSTEM\\CurrentControlSet\\Services\\<service>\\ImagePath, e.g. \"C:\\Program Files\\Some App\\app.exe\" -args, or with sc config <service> binPath= ... Also remove write access from the folder named in the evidence.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/009/"]
+    },
+    {
+      "id": "PS-SVC-004",
+      "title": "Unquoted service path contains spaces",
+      "category": "services",
+      "severity": "low",
+      "select": "facts.services[*]",
+      "where": {
+        "all": [
+          { "not": { "field": "path_name_raw", "regex": "^\\s*\"" } },
+          { "field": "image_path", "regex": "\\s" },
+          { "not": { "unquoted_hijack": "image_path" } },
+          { "field": "start_mode", "ne": "Disabled" }
+        ]
+      },
+      "subject": "{name}",
+      "evidence": {
+        "service": "name",
+        "command": "path_name_raw",
+        "runs as": "run_as"
+      },
+      "why": "Not exploitable as things stand: none of the folders Windows would try first is writable. It becomes exploitable as soon as one of them is.",
+      "fix": "Quote the path in HKLM\\SYSTEM\\CurrentControlSet\\Services\\<service>\\ImagePath, e.g. \"C:\\Program Files\\Some App\\app.exe\" -args.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/009/"]
+    },
+    {
+      "id": "PS-SVC-005",
+      "title": "Service executable is missing and non-admins can create it",
+      "category": "services",
+      "severity": "high",
+      "select": "facts.services[*]",
+      "where": {
+        "all": [
+          { "creatable_file": "image_path" },
+          { "field": "start_mode", "ne": "Disabled" }
+        ]
+      },
+      "subject": "{name}",
+      "evidence": {
+        "service": "name",
+        "executable": "image_path",
+        "runs as": "run_as",
+        "start mode": "start_mode",
+        "state": "state"
+      },
+      "why": "The service points at a program that no longer exists, in a place where non-admins can create it. Whoever puts a program there gets it run under the service's account (usually LocalSystem) the next time the service starts.",
+      "fix": "If the software was uninstalled, delete the leftover service from an elevated prompt (sc delete <service>). Otherwise reinstall it, or create the folder with an ACL that only lets SYSTEM and Administrators write to it.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/010/"]
+    }
+  ]
+}

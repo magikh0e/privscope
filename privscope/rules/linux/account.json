@@ -1,0 +1,207 @@
+{
+  "rules": [
+    {
+      "id": "PL-GRP-001",
+      "title": "Account is in a root-equivalent group",
+      "category": "principal",
+      "severity": "high",
+      "select": "principal.groups[*]",
+      "where": {
+        "all": [
+          { "field": "name", "in": ["docker", "lxd", "lxc", "incus", "incus-admin", "disk", "libvirt"] },
+          { "field": "$root.principal.is_admin", "eq": false }
+        ]
+      },
+      "subject": "{name}",
+      "evidence": { "group": "name", "gid": "gid", "account": "$root.principal.user" },
+      "why": "Members of docker, lxd, incus and libvirt control a hypervisor or container engine that runs as root and can mount the host's disks; members of disk can read and write raw disks directly. Each is root by another name.",
+      "fix": "Remove the membership unless the account is meant to be an administrator (gpasswd -d <user> <group>), and treat remaining members as root.",
+      "refs": ["https://attack.mitre.org/techniques/T1078/003/"]
+    },
+    {
+      "id": "PL-GRP-002",
+      "title": "Account can read password hashes",
+      "category": "principal",
+      "severity": "medium",
+      "select": "principal.groups[*]",
+      "where": {
+        "all": [
+          { "field": "name", "eq": "shadow" },
+          { "field": "$root.principal.is_admin", "eq": false }
+        ]
+      },
+      "subject": "{name}",
+      "evidence": { "group": "name", "account": "$root.principal.user" },
+      "why": "The shadow group can read /etc/shadow, so a member can try to crack every account's password offline, root's included.",
+      "fix": "Remove the membership (gpasswd -d <user> shadow). Only programs, not people, should be in this group.",
+      "refs": ["https://attack.mitre.org/techniques/T1003/008/"]
+    },
+    {
+      "id": "PL-GRP-003",
+      "title": "Account can read system logs",
+      "category": "principal",
+      "severity": "low",
+      "select": "principal.groups[*]",
+      "where": {
+        "all": [
+          { "field": "name", "eq": "adm" },
+          { "field": "$root.principal.is_admin", "eq": false }
+        ]
+      },
+      "subject": "{name}",
+      "evidence": { "group": "name", "account": "$root.principal.user" },
+      "why": "The adm group can read most of /var/log. Logs regularly capture secrets: passwords typed into the wrong prompt, tokens in URLs, command lines.",
+      "fix": "Remove the membership unless the account reviews logs for a living.",
+      "refs": ["https://attack.mitre.org/techniques/T1552/"]
+    },
+    {
+      "id": "PL-SUDO-001",
+      "title": "Passwordless sudo for any command",
+      "category": "sudo",
+      "severity": "high",
+      "select": "facts.sudo_rules[*]",
+      "where": {
+        "all": [
+          { "field": "nopasswd", "eq": true },
+          { "field": "command", "eq": "ALL" }
+        ]
+      },
+      "subject": "{who} ({source}): {raw}",
+      "evidence": { "who": "who", "runs as": "runas", "rule": "raw", "source": "source" },
+      "why": "Anything that runs as this account, a compromised browser tab's download or a malicious package's install script included, becomes root without a password prompt.",
+      "fix": "Remove NOPASSWD so sudo asks for the password, or limit the rule to the specific commands that need it.",
+      "refs": ["https://attack.mitre.org/techniques/T1548/003/"]
+    },
+    {
+      "id": "PL-SUDO-002",
+      "title": "Passwordless sudo for a program that can run commands or write files",
+      "category": "sudo",
+      "severity": "high",
+      "select": "facts.sudo_rules[*]",
+      "where": {
+        "all": [
+          { "field": "nopasswd", "eq": true },
+          { "field": "command_name", "regex": "^(ash|bash|busybox|csh|dash|fish|ksh|mksh|sh|tcsh|zsh|su|python[0-9.]*|perl[0-9.]*|ruby[0-9.]*|lua[0-9.]*|node|nodejs|php[0-9.]*|tclsh[0-9.]*|find|xargs|env|vi|vim|vim\\.basic|vim\\.tiny|rvim|nano|pico|ed|emacs|less|more|man|awk|gawk|mawk|nawk|sed|tee|cp|mv|dd|install|tar|zip|unzip|cpio|rsync|chmod|chown|chgrp|nmap|gdb|strace|ltrace|docker|git|screen|tmux|socat|nc|ncat|netcat|wget|curl|openssl|systemctl|journalctl|apt|apt-get|aptitude|dpkg|yum|dnf|rpm|zypper|pacman|apk|pip[0-9.]*|npm|gem|make|ssh|scp|mount|crontab|kubectl|snap)$" }
+        ]
+      },
+      "subject": "{who} ({source}): {command}",
+      "evidence": { "who": "who", "runs as": "runas", "command": "command", "source": "source" },
+      "why": "This program can start a shell, run other commands or write any file, so being allowed to run it as root without a password is the same as passwordless root.",
+      "fix": "Remove the rule, require the password, or replace it with a narrow wrapper script owned by root that does only the one job needed.",
+      "refs": ["https://attack.mitre.org/techniques/T1548/003/"]
+    },
+    {
+      "id": "PL-SUDO-003",
+      "title": "sudo rule runs a program that can be overwritten",
+      "category": "sudo",
+      "severity": "critical",
+      "select": "facts.sudo_rules[*]",
+      "where": { "writable": "command_path" },
+      "subject": "{who} ({source}): {command_path}",
+      "evidence": { "who": "who", "program": "command_path", "rule": "raw", "source": "source" },
+      "why": "sudo runs this program as root. Whoever can overwrite it decides what runs the next time someone uses the rule.",
+      "fix": "Make the program owned by root and writable only by root, or point the rule at a copy in a root-owned folder.",
+      "refs": ["https://attack.mitre.org/techniques/T1548/003/"]
+    },
+    {
+      "id": "PL-SUDO-004",
+      "title": "sudo rule uses a wildcard",
+      "category": "sudo",
+      "severity": "medium",
+      "select": "facts.sudo_rules[*]",
+      "where": {
+        "all": [
+          { "field": "command", "regex": "\\*" },
+          { "field": "command", "ne": "ALL" }
+        ]
+      },
+      "subject": "{who} ({source}): {command}",
+      "evidence": { "who": "who", "command": "command", "nopasswd": "nopasswd", "source": "source" },
+      "why": "Wildcards in sudo rules match far more than they appear to: extra arguments, other files, path tricks. They are a common way a narrow rule turns into a broad one.",
+      "fix": "List the exact commands and arguments instead of using '*', or use sudoedit for editing files.",
+      "refs": ["https://www.sudo.ws/docs/man/sudoers.man/#Wildcards"]
+    },
+    {
+      "id": "PL-SUDO-005",
+      "title": "sudo keeps the caller's environment or library paths",
+      "category": "sudo",
+      "severity": "high",
+      "select": "facts.sudo_defaults[*]",
+      "where": {
+        "field": "setting",
+        "regex": "^!env_reset$|env_keep.*(LD_PRELOAD|LD_LIBRARY_PATH|PYTHONPATH|PERL5LIB|PERLLIB|RUBYLIB|NODE_OPTIONS|BASH_ENV)"
+      },
+      "subject": "{source}: {setting}",
+      "evidence": { "setting": "setting", "source": "source" },
+      "why": "If sudo passes library or interpreter search paths through, the caller can make any command they may run with sudo load their own code as root.",
+      "fix": "Keep env_reset on and remove these variables from env_keep.",
+      "refs": ["https://www.sudo.ws/docs/man/sudoers.man/#Command_environment"]
+    },
+    {
+      "id": "PL-CRED-001",
+      "title": "Another account's SSH private key is readable",
+      "category": "credentials",
+      "severity": "high",
+      "select": "facts.credential_artifacts[*]",
+      "where": {
+        "all": [
+          { "field": "type", "eq": "ssh_private_key" },
+          { "readable": "path" },
+          {
+            "any": [
+              { "field": "$root.principal.is_admin", "eq": true },
+              { "field": "owner_uid", "ne_field": "$root.principal.uid" }
+            ]
+          }
+        ]
+      },
+      "subject": "{path}",
+      "evidence": { "key": "path", "owner": "owner" },
+      "why": "Whoever can read the key can log in wherever it is accepted, as its owner, unless it has a passphrase.",
+      "fix": "chmod 600 the key and 700 the .ssh folder. If others could read it, replace the key and remove the old public key from authorized_keys everywhere.",
+      "refs": ["https://attack.mitre.org/techniques/T1552/004/"]
+    },
+    {
+      "id": "PL-CRED-002",
+      "title": "Another account's credential file or history is readable",
+      "category": "credentials",
+      "severity": "high",
+      "select": "facts.credential_artifacts[*]",
+      "where": {
+        "all": [
+          { "field": "type", "in": ["git_credentials", "netrc", "pgpass", "mysql_config", "aws_credentials", "docker_config", "kube_config", "shell_history"] },
+          { "readable": "path" },
+          {
+            "any": [
+              { "field": "$root.principal.is_admin", "eq": true },
+              { "field": "owner_uid", "ne_field": "$root.principal.uid" }
+            ]
+          }
+        ]
+      },
+      "subject": "{path}",
+      "evidence": { "file": "path", "type": "type", "owner": "owner" },
+      "why": "These files hold passwords and tokens in plain text, and shell history often catches secrets typed on the command line.",
+      "fix": "chmod 600 the file (700 its folder) and rotate any credential it holds.",
+      "refs": ["https://attack.mitre.org/techniques/T1552/001/"]
+    },
+    {
+      "id": "PL-CRED-003",
+      "title": "Shell history file present",
+      "category": "credentials",
+      "severity": "info",
+      "select": "facts.credential_artifacts[*]",
+      "where": {
+        "all": [
+          { "field": "type", "eq": "shell_history" },
+          { "field": "owner_uid", "eq_field": "$root.principal.uid" }
+        ]
+      },
+      "subject": "{path}",
+      "evidence": { "file": "path", "owner": "owner" },
+      "why": "Shell history keeps every command typed, including passwords and tokens passed on the command line.",
+      "fix": "Review it and clear anything sensitive. Keep secrets off the command line (read them from a file or a prompt instead).",
+      "refs": ["https://attack.mitre.org/techniques/T1552/003/"]
+    }
+  ]
+}

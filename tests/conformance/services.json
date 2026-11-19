@@ -1,0 +1,106 @@
+{
+  "name": "services",
+  "description": "Writable service binaries and folders, inherit-only and deny ACEs, owner rights, key normalization, and unquoted paths that are and aren't hijackable. Collected as a standard user.",
+  "collection": {
+    "privscope": { "tool": "privscope-collector", "version": "0.1.0", "schema_version": 1, "kind": "collection" },
+    "principal": {
+      "user": "LAB\\alice",
+      "sid": "S-1-5-21-1-2-3-1001",
+      "is_admin": false,
+      "elevation": "standard",
+      "groups": [
+        { "sid": "S-1-1-0", "name": "Everyone" },
+        { "sid": "S-1-5-32-545", "name": "BUILTIN\\Users" },
+        { "sid": "S-1-5-11", "name": "NT AUTHORITY\\Authenticated Users" }
+      ],
+      "privileges": []
+    },
+    "facts": {
+      "services": [
+        { "name": "WritableBin", "run_as": "LocalSystem", "path_name_raw": "\"C:\\Apps\\Bin\\svc.exe\"", "image_path": "C:\\Apps\\Bin\\svc.exe", "image_dir": "C:\\Apps\\Bin" },
+        { "name": "WritableDir", "run_as": "LocalSystem", "path_name_raw": "\"C:\\Apps\\Dir\\svc.exe\"", "image_path": "C:\\Apps\\Dir\\svc.exe", "image_dir": "C:\\Apps\\Dir" },
+        { "name": "InheritOnly", "run_as": "LocalSystem", "path_name_raw": "\"C:\\Apps\\Io\\svc.exe\"", "image_path": "C:\\Apps\\Io\\svc.exe", "image_dir": "C:\\Apps\\Io" },
+        { "name": "Denied", "run_as": "LocalSystem", "path_name_raw": "\"C:\\Apps\\Deny\\svc.exe\"", "image_path": "C:\\Apps\\Deny\\svc.exe", "image_dir": "C:\\Apps\\Deny" },
+        { "name": "OwnedByAlice", "run_as": "LocalSystem", "path_name_raw": "\"C:\\Apps\\Own\\svc.exe\"", "image_path": "C:\\Apps\\Own\\svc.exe", "image_dir": "C:\\Apps\\Own" },
+        { "name": "Unquoted", "run_as": "LocalSystem", "path_name_raw": "C:\\Program Files\\Acme Tools\\agent.exe -run", "image_path": "C:\\Program Files\\Acme Tools\\agent.exe", "image_dir": "C:\\Program Files\\Acme Tools" },
+        { "name": "UnquotedSafe", "run_as": "LocalSystem", "path_name_raw": "D:\\Safe Co\\safe.exe", "image_path": "D:\\Safe Co\\safe.exe", "image_dir": "D:\\Safe Co" },
+        { "name": "QuotedSpaces", "run_as": "LocalSystem", "path_name_raw": "\"C:\\Program Files\\Acme Tools\\agent2.exe\" -x", "image_path": "C:\\Program Files\\Acme Tools\\agent2.exe", "image_dir": "C:\\Program Files\\Acme Tools" },
+        { "name": "NoImage", "run_as": null, "path_name_raw": null, "image_path": null, "image_dir": null }
+      ],
+      "acls": {
+        "c:\\apps\\bin\\svc.exe": { "path": "C:\\Apps\\Bin\\svc.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Administrators", "sid": "S-1-5-32-544", "rights": "FullControl", "access": "Allow", "inherited": true, "inherit_only": false },
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\apps\\bin": { "path": "C:\\Apps\\Bin", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\apps\\dir\\svc.exe": { "path": "C:\\Apps\\Dir\\svc.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "C:\\APPS\\Dir\\": { "path": "C:\\Apps\\Dir", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "NT AUTHORITY\\Authenticated Users", "sid": "S-1-5-11", "rights": "CreateFiles, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\apps\\io\\svc.exe": { "path": "C:\\Apps\\Io\\svc.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\apps\\io": { "path": "C:\\Apps\\Io", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "268435456", "access": "Allow", "inherited": false, "inherit_only": true },
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\apps\\deny\\svc.exe": { "path": "C:\\Apps\\Deny\\svc.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "Everyone", "sid": "S-1-1-0", "rights": "Write", "access": "Deny", "inherited": false, "inherit_only": false },
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\apps\\deny": { "path": "C:\\Apps\\Deny", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\apps\\own\\svc.exe": { "path": "C:\\Apps\\Own\\svc.exe", "exists": true, "owner": "lab\\ALICE", "aces": [
+          { "identity": "BUILTIN\\Administrators", "sid": "S-1-5-32-544", "rights": "FullControl", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\apps\\own": { "path": "C:\\Apps\\Own", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\": { "path": "C:\\", "exists": true, "owner": "NT SERVICE\\TrustedInstaller", "aces": [
+          { "identity": "NT AUTHORITY\\Authenticated Users", "sid": "S-1-5-11", "rights": "AppendData", "access": "Allow", "inherited": false, "inherit_only": false },
+          { "identity": "NT AUTHORITY\\Authenticated Users", "sid": "S-1-5-11", "rights": "-536805376", "access": "Allow", "inherited": false, "inherit_only": true },
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\program files": { "path": "C:\\Program Files", "exists": true, "owner": "NT SERVICE\\TrustedInstaller", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "CreateFiles, ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\program files\\acme tools": { "path": "C:\\Program Files\\Acme Tools", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\program files\\acme tools\\agent.exe": { "path": "C:\\Program Files\\Acme Tools\\agent.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\program files\\acme tools\\agent2.exe": { "path": "C:\\Program Files\\Acme Tools\\agent2.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "d:\\": { "path": "D:\\", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false },
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify", "access": "Allow", "inherited": false, "inherit_only": true }
+        ] },
+        "d:\\safe co": { "path": "D:\\Safe Co", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "d:\\safe co\\safe.exe": { "path": "D:\\Safe Co\\safe.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] }
+      }
+    }
+  },
+  "runs": [
+    {
+      "perspective": "auto",
+      "expect": [
+        "PS-SVC-001|WritableBin",
+        "PS-SVC-001|OwnedByAlice",
+        "PS-SVC-002|WritableDir",
+        "PS-SVC-003|Unquoted",
+        "PS-SVC-004|UnquotedSafe"
+      ]
+    }
+  ]
+}

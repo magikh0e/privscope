@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://magikh0e.pl/privscope/privscope-linux.schema.json",
+  "title": "privscope Linux collection document",
+  "description": "Read-only configuration facts gathered from a Linux host by collector/privscope-collect.sh. The collector records facts only; all judgments are made by the analyzer. File metadata (mode, owner, group) is stored once in facts.acls, keyed by path, including every ancestor folder; every other record refers to paths.",
+  "type": "object",
+  "required": ["privscope", "run", "host", "principal", "facts"],
+  "additionalProperties": false,
+  "properties": {
+    "privscope": {
+      "type": "object",
+      "required": ["tool", "platform", "version", "schema_version", "kind"],
+      "properties": {
+        "tool": { "const": "privscope-collector" },
+        "platform": { "const": "linux" },
+        "version": { "type": "string" },
+        "schema_version": { "type": "integer", "minimum": 1 },
+        "kind": { "const": "collection" },
+        "read_only": { "type": "boolean" }
+      }
+    },
+    "run": {
+      "type": "object",
+      "required": ["collected_at"],
+      "properties": {
+        "collected_at": { "type": "string" },
+        "collector_user": { "$ref": "#/$defs/s" },
+        "sudo_status": { "enum": ["listed", "password_required", "not_allowed", "not_installed", "failed", "skipped"] },
+        "capabilities_status": { "enum": ["listed", "getcap_missing"] },
+        "duration_ms": { "$ref": "#/$defs/i" }
+      }
+    },
+    "host": {
+      "type": "object",
+      "properties": {
+        "hostname": { "$ref": "#/$defs/s" },
+        "caption": { "$ref": "#/$defs/s" },
+        "os_id": { "$ref": "#/$defs/s" },
+        "os_version_id": { "$ref": "#/$defs/s" },
+        "version": { "$ref": "#/$defs/s" },
+        "kernel_build": { "$ref": "#/$defs/s" },
+        "architecture": { "$ref": "#/$defs/s" },
+        "container": { "$ref": "#/$defs/s" },
+        "wsl": { "type": "boolean" },
+        "wsl_windows_path": { "type": "boolean" }
+      }
+    },
+    "principal": {
+      "type": "object",
+      "required": ["uid", "groups"],
+      "properties": {
+        "user": { "$ref": "#/$defs/s" },
+        "uid": { "$ref": "#/$defs/i" },
+        "gid": { "$ref": "#/$defs/i" },
+        "is_admin": { "type": "boolean" },
+        "elevation": { "enum": ["root", "standard"] },
+        "groups": { "type": "array", "items": { "$ref": "#/$defs/rec", "properties": { "gid": { "$ref": "#/$defs/i" }, "name": { "$ref": "#/$defs/s" } } } }
+      }
+    },
+    "facts": {
+      "type": "object",
+      "required": ["suid_files", "capabilities", "cron", "systemd", "boot_scripts", "path_dirs", "sensitive_files",
+                   "nfs_exports", "ld_so_dirs", "ld_preload_libs", "sockets", "sudo_rules", "sudo_defaults",
+                   "credential_artifacts", "acls"],
+      "properties": {
+        "suid_files": { "type": "array", "items": { "$ref": "#/$defs/rec", "required": ["path", "setuid", "setgid"],
+          "properties": { "path": { "type": "string" }, "name": { "type": "string" }, "setuid": { "type": "boolean" },
+                          "setgid": { "type": "boolean" }, "owner": { "$ref": "#/$defs/s" }, "owner_uid": { "$ref": "#/$defs/i" } } } },
+        "capabilities": { "type": "array", "items": { "$ref": "#/$defs/rec", "required": ["path"],
+          "properties": { "path": { "type": "string" }, "name": { "type": "string" }, "capabilities": { "$ref": "#/$defs/s" } } } },
+        "cron": { "type": "array", "items": { "$ref": "#/$defs/rec",
+          "properties": { "source": { "$ref": "#/$defs/s" }, "user": { "$ref": "#/$defs/s" }, "run_as_uid": { "$ref": "#/$defs/i" },
+                          "schedule": { "$ref": "#/$defs/s" }, "command": { "$ref": "#/$defs/s" },
+                          "image_path": { "$ref": "#/$defs/s" }, "image_dir": { "$ref": "#/$defs/s" } } } },
+        "systemd": { "type": "array", "items": { "$ref": "#/$defs/rec",
+          "properties": { "unit": { "$ref": "#/$defs/s" }, "unit_file": { "$ref": "#/$defs/s" }, "run_as": { "$ref": "#/$defs/s" },
+                          "run_as_uid": { "$ref": "#/$defs/i" }, "directive": { "$ref": "#/$defs/s" }, "command": { "$ref": "#/$defs/s" },
+                          "image_path": { "$ref": "#/$defs/s" }, "image_dir": { "$ref": "#/$defs/s" } } } },
+        "boot_scripts": { "type": "array", "items": { "$ref": "#/$defs/rec",
+          "properties": { "source": { "$ref": "#/$defs/s" }, "path": { "$ref": "#/$defs/s" } } } },
+        "path_dirs": { "type": "array", "items": { "$ref": "#/$defs/rec", "required": ["scope", "dir"],
+          "properties": { "scope": { "enum": ["process", "environment", "root_login", "sudo", "cron"] }, "dir": { "type": "string" } } } },
+        "sensitive_files": { "type": "array", "items": { "$ref": "#/$defs/rec",
+          "properties": { "kind": { "$ref": "#/$defs/s" }, "path": { "$ref": "#/$defs/s" } } } },
+        "nfs_exports": { "type": "array", "items": { "$ref": "#/$defs/rec",
+          "properties": { "line": { "$ref": "#/$defs/s" }, "no_root_squash": { "type": "boolean" } } } },
+        "ld_so_dirs": { "type": "array", "items": { "$ref": "#/$defs/rec",
+          "properties": { "source": { "$ref": "#/$defs/s" }, "dir": { "$ref": "#/$defs/s" } } } },
+        "ld_preload_libs": { "type": "array", "items": { "$ref": "#/$defs/rec", "properties": { "path": { "$ref": "#/$defs/s" } } } },
+        "sockets": { "type": "array", "items": { "$ref": "#/$defs/rec",
+          "properties": { "kind": { "$ref": "#/$defs/s" }, "path": { "$ref": "#/$defs/s" } } } },
+        "sudo_rules": { "type": "array", "items": { "$ref": "#/$defs/rec",
+          "properties": { "who": { "$ref": "#/$defs/s" }, "source": { "$ref": "#/$defs/s" }, "runas": { "$ref": "#/$defs/s" },
+                          "nopasswd": { "type": "boolean" }, "command": { "$ref": "#/$defs/s" }, "command_path": { "$ref": "#/$defs/s" },
+                          "command_name": { "$ref": "#/$defs/s" }, "raw": { "$ref": "#/$defs/s" } } } },
+        "sudo_defaults": { "type": "array", "items": { "$ref": "#/$defs/rec",
+          "properties": { "source": { "$ref": "#/$defs/s" }, "setting": { "$ref": "#/$defs/s" } } } },
+        "credential_artifacts": { "type": "array",
+          "description": "Presence and file metadata only; contents are never read.",
+          "items": { "$ref": "#/$defs/rec",
+            "properties": { "type": { "$ref": "#/$defs/s" }, "path": { "type": "string" }, "owner": { "$ref": "#/$defs/s" },
+                            "owner_uid": { "$ref": "#/$defs/i" } } } },
+        "acls": {
+          "type": "object",
+          "description": "stat -L of every recorded path and its ancestors, keyed by path.",
+          "additionalProperties": { "$ref": "#/$defs/stat" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "s": { "type": ["string", "null"] },
+    "i": { "type": ["integer", "null"] },
+    "rec": { "type": "object" },
+    "stat": {
+      "type": "object",
+      "required": ["path", "exists"],
+      "properties": {
+        "path": { "type": "string" },
+        "exists": { "type": "boolean" },
+        "mode": { "type": "string", "pattern": "^[0-7]{1,6}$" },
+        "uid": { "$ref": "#/$defs/i" },
+        "gid": { "$ref": "#/$defs/i" },
+        "owner": { "$ref": "#/$defs/s" },
+        "group": { "$ref": "#/$defs/s" },
+        "type": { "$ref": "#/$defs/s" }
+      }
+    }
+  }
+}

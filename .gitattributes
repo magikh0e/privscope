@@ -1,0 +1,8 @@
+* text=auto
+
+# Run on Linux: must keep LF even when checked out on Windows.
+*.sh text eol=lf
+Dockerfile text eol=lf
+
+# Run on Windows.
+*.ps1 text eol=crlf

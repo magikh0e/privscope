@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "privscope"
+version = "0.1.0"
+description = "Defensive Windows local privilege-escalation auditor: read-only collector plus offline analyzer"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+privscope = "privscope.cli:main"
+
+[tool.setuptools]
+packages = ["privscope"]
+
+[tool.setuptools.package-data]
+privscope = ["rules/*/*.json"]

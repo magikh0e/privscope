@@ -1,0 +1,103 @@
+{
+  "name": "linux-perspective",
+  "description": "Linux, collected as root on WSL. auto/standard-user counts any non-root account: 'other' bits, non-root groups with write (Debian's staff on /usr/local/bin), and non-root owners of files root runs, with folder traversal checked for that same owner (alice's script under her 0700 home). Reading counts 'other' bits only, so /etc/shadow readable by group shadow isn't reported. The WSL Windows PATH is one finding, not one per folder. principal shows that root can do everything.",
+  "collection": {
+    "privscope": { "tool": "privscope-collector", "platform": "linux", "version": "0.1.0", "schema_version": 1, "kind": "collection" },
+    "host": { "hostname": "wsl", "version": "6.6.87.2-microsoft-standard-WSL2", "wsl": true, "wsl_windows_path": true },
+    "principal": {
+      "user": "root", "uid": 0, "gid": 0, "is_admin": true, "elevation": "root",
+      "groups": [ { "gid": 0, "name": "root" }, { "gid": 999, "name": "docker" } ]
+    },
+    "facts": {
+      "sensitive_files": [
+        { "kind": "crontab", "path": "/etc/crontab" },
+        { "kind": "environment", "path": "/etc/environment" },
+        { "kind": "passwd", "path": "/etc/passwd" },
+        { "kind": "shadow", "path": "/etc/shadow" },
+        { "kind": "root_home", "path": "/root" }
+      ],
+      "cron": [
+        { "source": "/etc/crontab", "user": "root", "run_as_uid": 0, "schedule": "0 3 * * *", "command": "/home/alice/bin/nightly.sh", "image_path": "/home/alice/bin/nightly.sh", "image_dir": "/home/alice/bin" }
+      ],
+      "path_dirs": [
+        { "scope": "process", "dir": "/usr/local/bin" },
+        { "scope": "process", "dir": "/usr/bin" },
+        { "scope": "process", "dir": "/mnt/c/Windows/System32" }
+      ],
+      "credential_artifacts": [
+        { "type": "ssh_private_key", "path": "/root/.ssh/id_rsa", "owner": "root", "owner_uid": 0 },
+        { "type": "ssh_private_key", "path": "/home/dave/.ssh/id_rsa", "owner": "dave", "owner_uid": 1003 }
+      ],
+      "acls": {
+        "/": { "path": "/", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/etc": { "path": "/etc", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/etc/crontab": { "path": "/etc/crontab", "exists": true, "mode": "664", "uid": 0, "gid": 50, "owner": "root", "group": "staff", "type": "regular file" },
+        "/etc/environment": { "path": "/etc/environment", "exists": true, "mode": "644", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "regular file" },
+        "/etc/passwd": { "path": "/etc/passwd", "exists": true, "mode": "644", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/etc/shadow": { "path": "/etc/shadow", "exists": true, "mode": "640", "uid": 0, "gid": 42, "owner": "root", "group": "shadow", "type": "regular file" },
+        "/root": { "path": "/root", "exists": true, "mode": "700", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/root/.ssh": { "path": "/root/.ssh", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/root/.ssh/id_rsa": { "path": "/root/.ssh/id_rsa", "exists": true, "mode": "644", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/home": { "path": "/home", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/home/alice": { "path": "/home/alice", "exists": true, "mode": "700", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "directory" },
+        "/home/alice/bin": { "path": "/home/alice/bin", "exists": true, "mode": "755", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "directory" },
+        "/home/alice/bin/nightly.sh": { "path": "/home/alice/bin/nightly.sh", "exists": true, "mode": "700", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "regular file" },
+        "/home/dave": { "path": "/home/dave", "exists": true, "mode": "711", "uid": 1003, "gid": 1003, "owner": "dave", "group": "dave", "type": "directory" },
+        "/home/dave/.ssh": { "path": "/home/dave/.ssh", "exists": true, "mode": "711", "uid": 1003, "gid": 1003, "owner": "dave", "group": "dave", "type": "directory" },
+        "/home/dave/.ssh/id_rsa": { "path": "/home/dave/.ssh/id_rsa", "exists": true, "mode": "604", "uid": 1003, "gid": 1003, "owner": "dave", "group": "dave", "type": "regular file" },
+        "/usr": { "path": "/usr", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr/bin": { "path": "/usr/bin", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr/local": { "path": "/usr/local", "exists": true, "mode": "2775", "uid": 0, "gid": 50, "owner": "root", "group": "staff", "type": "directory" },
+        "/usr/local/bin": { "path": "/usr/local/bin", "exists": true, "mode": "2775", "uid": 0, "gid": 50, "owner": "root", "group": "staff", "type": "directory" },
+        "/mnt": { "path": "/mnt", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/mnt/c": { "path": "/mnt/c", "exists": true, "mode": "777", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "directory" },
+        "/mnt/c/Windows": { "path": "/mnt/c/Windows", "exists": true, "mode": "777", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "directory" },
+        "/mnt/c/Windows/System32": { "path": "/mnt/c/Windows/System32", "exists": true, "mode": "777", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "directory" }
+      }
+    }
+  },
+  "runs": [
+    {
+      "perspective": "auto",
+      "expect": [
+        "PL-FILE-003|/etc/crontab",
+        "PL-FILE-004|/etc/environment",
+        "PL-CRON-001|/etc/crontab -> /home/alice/bin/nightly.sh",
+        "PL-CRON-002|/etc/crontab -> /home/alice/bin/nightly.sh",
+        "PL-PATH-001|process: /usr/local/bin",
+        "PL-WSL-001|appendWindowsPath",
+        "PL-CRED-001|/home/dave/.ssh/id_rsa"
+      ]
+    },
+    {
+      "perspective": "standard-user",
+      "expect": [
+        "PL-FILE-003|/etc/crontab",
+        "PL-FILE-004|/etc/environment",
+        "PL-CRON-001|/etc/crontab -> /home/alice/bin/nightly.sh",
+        "PL-CRON-002|/etc/crontab -> /home/alice/bin/nightly.sh",
+        "PL-PATH-001|process: /usr/local/bin",
+        "PL-WSL-001|appendWindowsPath",
+        "PL-CRED-001|/home/dave/.ssh/id_rsa"
+      ]
+    },
+    {
+      "perspective": "principal",
+      "expect": [
+        "PL-FILE-001|/etc/passwd",
+        "PL-FILE-001|/etc/shadow",
+        "PL-FILE-002|/etc/shadow",
+        "PL-FILE-003|/etc/crontab",
+        "PL-FILE-004|/etc/environment",
+        "PL-FILE-005|/root",
+        "PL-CRON-001|/etc/crontab -> /home/alice/bin/nightly.sh",
+        "PL-CRON-002|/etc/crontab -> /home/alice/bin/nightly.sh",
+        "PL-PATH-001|process: /usr/local/bin",
+        "PL-PATH-001|process: /usr/bin",
+        "PL-WSL-001|appendWindowsPath",
+        "PL-CRED-001|/root/.ssh/id_rsa",
+        "PL-CRED-001|/home/dave/.ssh/id_rsa"
+      ]
+    }
+  ]
+}

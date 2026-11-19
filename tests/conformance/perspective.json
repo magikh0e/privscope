@@ -1,0 +1,64 @@
+{
+  "name": "perspective",
+  "description": "Collected by an elevated admin. auto and standard-user ignore the admin's own SIDs and owner rights but include any domain's Domain Users; principal counts everything the admin token has. Privilege and group rules stay quiet for an admin.",
+  "collection": {
+    "privscope": { "tool": "privscope-collector", "version": "0.1.0", "schema_version": 1, "kind": "collection" },
+    "principal": {
+      "user": "LAB\\admin",
+      "sid": "S-1-5-21-1-2-3-500",
+      "is_admin": true,
+      "elevation": "elevated",
+      "groups": [
+        { "sid": "S-1-5-32-544", "name": "BUILTIN\\Administrators" },
+        { "sid": "S-1-5-11", "name": "NT AUTHORITY\\Authenticated Users" },
+        { "sid": "S-1-5-32-551", "name": "BUILTIN\\Backup Operators" }
+      ],
+      "privileges": [ { "name": "SeDebugPrivilege", "state": "Enabled" } ]
+    },
+    "facts": {
+      "services": [
+        { "name": "AdminOnly", "run_as": "LocalSystem", "path_name_raw": "C:\\S\\a.exe", "image_path": "C:\\S\\a.exe", "image_dir": "C:\\S" },
+        { "name": "AuthUsersModify", "run_as": "LocalSystem", "path_name_raw": "C:\\S\\b.exe", "image_path": "C:\\S\\b.exe", "image_dir": "C:\\S" },
+        { "name": "AdminUserSid", "run_as": "LocalSystem", "path_name_raw": "C:\\S\\c.exe", "image_path": "C:\\S\\c.exe", "image_dir": "C:\\S" },
+        { "name": "DomainUsers", "run_as": "LocalSystem", "path_name_raw": "C:\\S\\d.exe", "image_path": "C:\\S\\d.exe", "image_dir": "C:\\S" },
+        { "name": "OwnerAdmin", "run_as": "LocalSystem", "path_name_raw": "C:\\S\\e.exe", "image_path": "C:\\S\\e.exe", "image_dir": "C:\\S" }
+      ],
+      "acls": {
+        "c:\\s\\a.exe": { "path": "C:\\S\\a.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Administrators", "sid": "S-1-5-32-544", "rights": "FullControl", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\s\\b.exe": { "path": "C:\\S\\b.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "NT AUTHORITY\\Authenticated Users", "sid": "S-1-5-11", "rights": "Modify, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\s\\c.exe": { "path": "C:\\S\\c.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "LAB\\admin", "sid": "S-1-5-21-1-2-3-500", "rights": "FullControl", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\s\\d.exe": { "path": "C:\\S\\d.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "OTHER\\Domain Users", "sid": "S-1-5-21-9-9-9-513", "rights": "Write, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\s\\e.exe": { "path": "C:\\S\\e.exe", "exists": true, "owner": "LAB\\admin", "aces": [
+          { "identity": "NT AUTHORITY\\SYSTEM", "sid": "S-1-5-18", "rights": "FullControl", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] }
+      }
+    }
+  },
+  "runs": [
+    {
+      "perspective": "auto",
+      "expect": [ "PS-SVC-001|AuthUsersModify", "PS-SVC-001|DomainUsers" ]
+    },
+    {
+      "perspective": "standard-user",
+      "expect": [ "PS-SVC-001|AuthUsersModify", "PS-SVC-001|DomainUsers" ]
+    },
+    {
+      "perspective": "principal",
+      "expect": [
+        "PS-SVC-001|AdminOnly",
+        "PS-SVC-001|AuthUsersModify",
+        "PS-SVC-001|AdminUserSid",
+        "PS-SVC-001|OwnerAdmin"
+      ]
+    }
+  ]
+}

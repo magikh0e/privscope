@@ -1,0 +1,105 @@
+{
+  "name": "missing-programs",
+  "description": "Executables that no longer exist: creatable through a folder chain, creatable as a file in an existing folder, blocked by a protected or append-only folder, or not recorded at all (unknown). Disabled services and tasks are skipped by the active rules; disabled privileged tasks get the low-severity cleanup rule instead. Collected as a standard user.",
+  "collection": {
+    "privscope": { "tool": "privscope-collector", "version": "0.1.0", "schema_version": 1, "kind": "collection" },
+    "principal": {
+      "user": "LAB\\alice",
+      "sid": "S-1-5-21-1-2-3-1001",
+      "is_admin": false,
+      "elevation": "standard",
+      "groups": [
+        { "sid": "S-1-1-0", "name": "Everyone" },
+        { "sid": "S-1-5-32-545", "name": "BUILTIN\\Users" },
+        { "sid": "S-1-5-11", "name": "NT AUTHORITY\\Authenticated Users" }
+      ],
+      "privileges": []
+    },
+    "facts": {
+      "services": [
+        { "name": "GoneCreatable", "run_as": "LocalSystem", "start_mode": "Auto", "path_name_raw": "C:\\Vendor2\\Svc\\gone.exe", "image_path": "C:\\Vendor2\\Svc\\gone.exe", "image_dir": null },
+        { "name": "GoneProtected", "run_as": "LocalSystem", "start_mode": "Auto", "path_name_raw": "\"C:\\Program Files\\Acme\\gone.exe\"", "image_path": "C:\\Program Files\\Acme\\gone.exe", "image_dir": null },
+        { "name": "GoneFileOnly", "run_as": "LocalSystem", "start_mode": "Manual", "path_name_raw": "C:\\Data\\App\\gone.exe", "image_path": "C:\\Data\\App\\gone.exe", "image_dir": null },
+        { "name": "GoneAppendOnly", "run_as": "LocalSystem", "start_mode": "Manual", "path_name_raw": "C:\\Data\\Ro\\gone.exe", "image_path": "C:\\Data\\Ro\\gone.exe", "image_dir": null },
+        { "name": "NotRecorded", "run_as": "LocalSystem", "start_mode": "Auto", "path_name_raw": "C:\\Data\\App\\other.exe", "image_path": "C:\\Data\\App\\other.exe", "image_dir": null },
+        { "name": "DisabledWritable", "run_as": "LocalSystem", "start_mode": "Disabled", "path_name_raw": "C:\\Data\\App\\dis.exe", "image_path": "C:\\Data\\App\\dis.exe", "image_dir": null },
+        { "name": "DisabledGone", "run_as": "LocalSystem", "start_mode": "Disabled", "path_name_raw": "C:\\Data\\App\\disgone.exe", "image_path": "C:\\Data\\App\\disgone.exe", "image_dir": null }
+      ],
+      "scheduled_tasks": [
+        { "name": "GoneTask", "path": "\\", "state": "Ready", "run_as": "SYSTEM", "run_as_sid": "S-1-5-18", "run_as_group": null, "run_as_group_sid": null, "run_level": "Limited",
+          "actions": [ { "execute": "C:\\Data\\App\\task.exe", "arguments": null, "image_path": "C:\\Data\\App\\task.exe", "image_dir": null } ] },
+        { "name": "DisabledGone", "path": "\\", "state": "Disabled", "run_as": null, "run_as_sid": null, "run_as_group": "Users", "run_as_group_sid": "S-1-5-32-545", "run_level": "Highest",
+          "actions": [ { "execute": "\"C:\\ProgramData\\OEM\\UpgradeTool\\ListCheck.exe\"", "arguments": null, "image_path": "C:\\ProgramData\\OEM\\UpgradeTool\\ListCheck.exe", "image_dir": null } ] },
+        { "name": "DisabledWritable", "path": "\\", "state": "Disabled", "run_as": "SYSTEM", "run_as_sid": "S-1-5-18", "run_as_group": null, "run_as_group_sid": null, "run_level": "Limited",
+          "actions": [ { "execute": "C:\\Data\\App\\dis2.exe", "arguments": null, "image_path": "C:\\Data\\App\\dis2.exe", "image_dir": null } ] },
+        { "name": "DisabledSafe", "path": "\\", "state": "Disabled", "run_as": "SYSTEM", "run_as_sid": "S-1-5-18", "run_as_group": null, "run_as_group_sid": null, "run_level": "Limited",
+          "actions": [ { "execute": "C:\\Program Files\\Acme\\gone.exe", "arguments": null, "image_path": "C:\\Program Files\\Acme\\gone.exe", "image_dir": null } ] },
+        { "name": "UserGone", "path": "\\", "state": "Ready", "run_as": "alice", "run_as_sid": "S-1-5-21-1-2-3-1001", "run_as_group": null, "run_as_group_sid": null, "run_level": "Limited",
+          "actions": [ { "execute": "C:\\Data\\App\\mine.exe", "arguments": null, "image_path": "C:\\Data\\App\\mine.exe", "image_dir": null } ] }
+      ],
+      "autoruns": [
+        { "hive": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", "name": "Stale", "value": "\"C:\\Data\\App\\stale.exe\"", "image_path": "C:\\Data\\App\\stale.exe", "image_dir": null },
+        { "hive": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", "name": "MyStale", "value": "\"C:\\Data\\App\\mystale.exe\"", "image_path": "C:\\Data\\App\\mystale.exe", "image_dir": null }
+      ],
+      "acls": {
+        "c:\\": { "path": "C:\\", "exists": true, "owner": "NT SERVICE\\TrustedInstaller", "aces": [
+          { "identity": "NT AUTHORITY\\Authenticated Users", "sid": "S-1-5-11", "rights": "AppendData", "access": "Allow", "inherited": false, "inherit_only": false },
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\vendor2": { "path": "C:\\Vendor2", "exists": false, "aces": [] },
+        "c:\\vendor2\\svc": { "path": "C:\\Vendor2\\Svc", "exists": false, "aces": [] },
+        "c:\\vendor2\\svc\\gone.exe": { "path": "C:\\Vendor2\\Svc\\gone.exe", "exists": false, "aces": [] },
+        "c:\\program files": { "path": "C:\\Program Files", "exists": true, "owner": "NT SERVICE\\TrustedInstaller", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\program files\\acme": { "path": "C:\\Program Files\\Acme", "exists": false, "aces": [] },
+        "c:\\program files\\acme\\gone.exe": { "path": "C:\\Program Files\\Acme\\gone.exe", "exists": false, "aces": [] },
+        "c:\\data": { "path": "C:\\Data", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\data\\app": { "path": "C:\\Data\\App", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "CreateFiles, ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\data\\app\\gone.exe": { "path": "C:\\Data\\App\\gone.exe", "exists": false, "aces": [] },
+        "c:\\data\\app\\dis.exe": { "path": "C:\\Data\\App\\dis.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\data\\app\\disgone.exe": { "path": "C:\\Data\\App\\disgone.exe", "exists": false, "aces": [] },
+        "c:\\data\\app\\task.exe": { "path": "C:\\Data\\App\\task.exe", "exists": false, "aces": [] },
+        "c:\\data\\app\\dis2.exe": { "path": "C:\\Data\\App\\dis2.exe", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Modify, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\data\\app\\mine.exe": { "path": "C:\\Data\\App\\mine.exe", "exists": false, "aces": [] },
+        "c:\\data\\app\\stale.exe": { "path": "C:\\Data\\App\\stale.exe", "exists": false, "aces": [] },
+        "c:\\data\\app\\mystale.exe": { "path": "C:\\Data\\App\\mystale.exe", "exists": false, "aces": [] },
+        "c:\\data\\ro": { "path": "C:\\Data\\Ro", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "AppendData, ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\data\\ro\\gone.exe": { "path": "C:\\Data\\Ro\\gone.exe", "exists": false, "aces": [] },
+        "c:\\programdata": { "path": "C:\\ProgramData", "exists": true, "owner": "NT AUTHORITY\\SYSTEM", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": false, "inherit_only": false },
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Write", "access": "Allow", "inherited": false, "inherit_only": false }
+        ] },
+        "c:\\programdata\\oem": { "path": "C:\\ProgramData\\OEM", "exists": true, "owner": "BUILTIN\\Administrators", "aces": [
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "ReadAndExecute, Synchronize", "access": "Allow", "inherited": true, "inherit_only": false },
+          { "identity": "BUILTIN\\Users", "sid": "S-1-5-32-545", "rights": "Write", "access": "Allow", "inherited": true, "inherit_only": false }
+        ] },
+        "c:\\programdata\\oem\\upgradetool": { "path": "C:\\ProgramData\\OEM\\UpgradeTool", "exists": false, "aces": [] },
+        "c:\\programdata\\oem\\upgradetool\\listcheck.exe": { "path": "C:\\ProgramData\\OEM\\UpgradeTool\\ListCheck.exe", "exists": false, "aces": [] }
+      }
+    }
+  },
+  "runs": [
+    {
+      "perspective": "auto",
+      "expect": [
+        "PS-SVC-005|GoneCreatable",
+        "PS-SVC-005|GoneFileOnly",
+        "PS-TASK-003|\\GoneTask -> C:\\Data\\App\\task.exe",
+        "PS-TASK-004|\\DisabledGone -> C:\\ProgramData\\OEM\\UpgradeTool\\ListCheck.exe",
+        "PS-TASK-004|\\DisabledWritable -> C:\\Data\\App\\dis2.exe",
+        "PS-AUTO-004|HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run\\Stale"
+      ]
+    }
+  ]
+}

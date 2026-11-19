@@ -1,0 +1,141 @@
+{
+  "rules": [
+    {
+      "id": "PS-TASK-001",
+      "title": "Privileged scheduled task runs a program that can be overwritten",
+      "category": "tasks",
+      "severity": "high",
+      "select": "facts.scheduled_tasks[*].actions[*]",
+      "where": {
+        "all": [
+          { "writable": "image_path" },
+          { "field": "$parent.state", "ne": "Disabled" },
+          {
+            "any": [
+              { "field": "$parent.run_as_sid", "in": ["S-1-5-18", "S-1-5-19", "S-1-5-20"] },
+              { "field": "$parent.run_as_group_sid", "eq": "S-1-5-32-544" },
+              { "field": "$parent.run_level", "eq": "Highest" }
+            ]
+          }
+        ]
+      },
+      "subject": "{$parent.path}{$parent.name} -> {image_path}",
+      "evidence": {
+        "task": "$parent.name",
+        "task folder": "$parent.path",
+        "program": "image_path",
+        "runs as": "$parent.run_as",
+        "runs as group": "$parent.run_as_group",
+        "run level": "$parent.run_level",
+        "state": "$parent.state"
+      },
+      "why": "The task runs this program as SYSTEM, a service account, or with highest privileges. Anyone who can overwrite the program gets those rights the next time the task fires.",
+      "fix": "Restrict the program's ACL so only SYSTEM and Administrators can write it, or point the task at a copy in a protected folder (Program Files, System32). schtasks /query /tn \"<task>\" /v shows its triggers.",
+      "refs": ["https://attack.mitre.org/techniques/T1053/005/"]
+    },
+    {
+      "id": "PS-TASK-002",
+      "title": "Privileged scheduled task's program folder lets non-admins add files",
+      "category": "tasks",
+      "severity": "medium",
+      "select": "facts.scheduled_tasks[*].actions[*]",
+      "where": {
+        "all": [
+          { "writable": "image_dir" },
+          { "field": "$parent.state", "ne": "Disabled" },
+          {
+            "any": [
+              { "field": "$parent.run_as_sid", "in": ["S-1-5-18", "S-1-5-19", "S-1-5-20"] },
+              { "field": "$parent.run_as_group_sid", "eq": "S-1-5-32-544" },
+              { "field": "$parent.run_level", "eq": "Highest" }
+            ]
+          }
+        ]
+      },
+      "subject": "{$parent.path}{$parent.name} -> {image_path}",
+      "evidence": {
+        "task": "$parent.name",
+        "task folder": "$parent.path",
+        "program folder": "image_dir",
+        "runs as": "$parent.run_as",
+        "runs as group": "$parent.run_as_group",
+        "run level": "$parent.run_level",
+        "state": "$parent.state"
+      },
+      "why": "Windows looks in a program's own folder first when it loads a DLL. A DLL planted here under the name of one the program loads runs with the task's privileges.",
+      "fix": "Remove 'create files / write data' rights for non-admin accounts on the folder, or move the program into a protected folder and update the task.",
+      "refs": ["https://attack.mitre.org/techniques/T1574/001/"]
+    },
+    {
+      "id": "PS-TASK-003",
+      "title": "Privileged scheduled task runs a missing program that non-admins can create",
+      "category": "tasks",
+      "severity": "high",
+      "select": "facts.scheduled_tasks[*].actions[*]",
+      "where": {
+        "all": [
+          { "creatable_file": "image_path" },
+          { "field": "$parent.state", "ne": "Disabled" },
+          {
+            "any": [
+              { "field": "$parent.run_as_sid", "in": ["S-1-5-18", "S-1-5-19", "S-1-5-20"] },
+              { "field": "$parent.run_as_group_sid", "eq": "S-1-5-32-544" },
+              { "field": "$parent.run_level", "eq": "Highest" }
+            ]
+          }
+        ]
+      },
+      "subject": "{$parent.path}{$parent.name} -> {image_path}",
+      "evidence": {
+        "task": "$parent.name",
+        "task folder": "$parent.path",
+        "program": "image_path",
+        "runs as": "$parent.run_as",
+        "runs as group": "$parent.run_as_group",
+        "run level": "$parent.run_level",
+        "state": "$parent.state"
+      },
+      "why": "The task starts a program that no longer exists, in a place where non-admins can create it. Whoever puts a program there gets it run as SYSTEM, a service account, or with highest privileges the next time the task fires.",
+      "fix": "If the software is gone, delete the task (Task Scheduler, or schtasks /delete /tn \"<task>\" from an elevated prompt). Otherwise reinstall the program into a protected folder.",
+      "refs": ["https://attack.mitre.org/techniques/T1053/005/"]
+    },
+    {
+      "id": "PS-TASK-004",
+      "title": "Disabled privileged task would run a program non-admins can replace",
+      "category": "tasks",
+      "severity": "low",
+      "select": "facts.scheduled_tasks[*].actions[*]",
+      "where": {
+        "all": [
+          { "field": "$parent.state", "eq": "Disabled" },
+          {
+            "any": [
+              { "field": "$parent.run_as_sid", "in": ["S-1-5-18", "S-1-5-19", "S-1-5-20"] },
+              { "field": "$parent.run_as_group_sid", "eq": "S-1-5-32-544" },
+              { "field": "$parent.run_level", "eq": "Highest" }
+            ]
+          },
+          {
+            "any": [
+              { "writable": "image_path" },
+              { "creatable_file": "image_path" }
+            ]
+          }
+        ]
+      },
+      "subject": "{$parent.path}{$parent.name} -> {image_path}",
+      "evidence": {
+        "task": "$parent.name",
+        "task folder": "$parent.path",
+        "program": "image_path",
+        "runs as": "$parent.run_as",
+        "runs as group": "$parent.run_as_group",
+        "run level": "$parent.run_level",
+        "state": "$parent.state"
+      },
+      "why": "Not exploitable while the task stays disabled. If anything re-enables it (an update, a repair install, an admin), non-admins can supply the program it runs with high privileges.",
+      "fix": "Delete the task if nothing needs it (Task Scheduler, or schtasks /delete /tn \"<task>\" from an elevated prompt). Disabled tasks left behind by uninstalled software are safe to remove.",
+      "refs": ["https://attack.mitre.org/techniques/T1053/005/"]
+    }
+  ]
+}

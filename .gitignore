@@ -1,0 +1,14 @@
+# Collections and reports hold real host data: never commit them.
+privscope-*.json
+*-report.md
+*-report.html
+*-diff.html
+reports/
+
+# ...but the JSON schemas share the privscope-*.json name pattern.
+!schema/privscope-*.schema.json
+
+__pycache__/
+*.egg-info/
+build/
+dist/

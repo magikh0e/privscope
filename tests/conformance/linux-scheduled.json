@@ -1,0 +1,94 @@
+{
+  "name": "linux-scheduled",
+  "description": "Linux, collected as a standard user (alice): root cron jobs and systemd services whose program is writable, whose folder is writable, or which is missing but creatable; a writable unit file of a non-root service; non-root jobs and services that must not count; PATH entries of root (writable, creatable, relative, empty) versus the user's own process PATH.",
+  "collection": {
+    "privscope": { "tool": "privscope-collector", "platform": "linux", "version": "0.1.0", "schema_version": 1, "kind": "collection" },
+    "host": { "hostname": "lab", "wsl": false, "wsl_windows_path": false },
+    "principal": {
+      "user": "alice", "uid": 1000, "gid": 1000, "is_admin": false, "elevation": "standard",
+      "groups": [ { "gid": 1000, "name": "alice" } ]
+    },
+    "facts": {
+      "cron": [
+        { "source": "/etc/crontab", "user": "root", "run_as_uid": 0, "schedule": "0 2 * * *", "command": "/opt/app/bin/backup.sh", "image_path": "/opt/app/bin/backup.sh", "image_dir": "/opt/app/bin" },
+        { "source": "/etc/cron.d/rotate", "user": "root", "run_as_uid": 0, "schedule": "@daily", "command": "/opt/jobs/rotate", "image_path": "/opt/jobs/rotate", "image_dir": "/opt/jobs" },
+        { "source": "/etc/cron.d/stale", "user": "root", "run_as_uid": 0, "schedule": "@hourly", "command": "/srv/gone/run.sh", "image_path": "/srv/gone/run.sh", "image_dir": "/srv/gone" },
+        { "source": "/var/spool/cron/crontabs/alice", "user": "alice", "run_as_uid": 1000, "schedule": "* * * * *", "command": "/home/alice/job.sh", "image_path": "/home/alice/job.sh", "image_dir": "/home/alice" },
+        { "source": "/etc/crontab", "user": "root", "run_as_uid": 0, "schedule": "17 * * * *", "command": "cd / && run-parts --report /etc/cron.hourly", "image_path": null, "image_dir": null }
+      ],
+      "systemd": [
+        { "unit": "app.service", "unit_file": "/etc/systemd/system/app.service", "run_as": "root", "run_as_uid": 0, "directive": "ExecStart", "command": "/opt/app/bin/server --port 80", "image_path": "/opt/app/bin/server", "image_dir": "/opt/app/bin" },
+        { "unit": "app.service", "unit_file": "/etc/systemd/system/app.service", "run_as": "root", "run_as_uid": 0, "directive": "ExecStartPre", "command": "/usr/bin/true", "image_path": "/usr/bin/true", "image_dir": "/usr/bin" },
+        { "unit": "web.service", "unit_file": "/etc/systemd/system/web.service", "run_as": "www-data", "run_as_uid": 33, "directive": "ExecStart", "command": "/opt/app/bin/web", "image_path": "/opt/app/bin/web", "image_dir": "/opt/app/bin" },
+        { "unit": "jobs.service", "unit_file": "/lib/systemd/system/jobs.service", "run_as": "root", "run_as_uid": 0, "directive": "ExecStart", "command": "/opt/jobs/worker", "image_path": "/opt/jobs/worker", "image_dir": "/opt/jobs" },
+        { "unit": "gone.service", "unit_file": "/etc/systemd/system/gone.service", "run_as": "root", "run_as_uid": 0, "directive": "ExecStart", "command": "/srv/gone2/daemon", "image_path": "/srv/gone2/daemon", "image_dir": "/srv/gone2" },
+        { "unit": "dyn.service", "unit_file": "/etc/systemd/system/dyn.service", "run_as": "(dynamic)", "run_as_uid": null, "directive": "ExecStart", "command": "/opt/app/bin/server", "image_path": "/opt/app/bin/server", "image_dir": "/opt/app/bin" }
+      ],
+      "path_dirs": [
+        { "scope": "sudo", "dir": "/usr/local/sbin" },
+        { "scope": "cron", "dir": "/tmp" },
+        { "scope": "environment", "dir": "/srv/missing/bin" },
+        { "scope": "root_login", "dir": "." },
+        { "scope": "sudo", "dir": "" },
+        { "scope": "process", "dir": "/tmp" }
+      ],
+      "acls": {
+        "/": { "path": "/", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr": { "path": "/usr", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr/bin": { "path": "/usr/bin", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr/bin/true": { "path": "/usr/bin/true", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/usr/local": { "path": "/usr/local", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/usr/local/sbin": { "path": "/usr/local/sbin", "exists": true, "mode": "2775", "uid": 0, "gid": 50, "owner": "root", "group": "staff", "type": "directory" },
+        "/lib": { "path": "/lib", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/lib/systemd": { "path": "/lib/systemd", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/lib/systemd/system": { "path": "/lib/systemd/system", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/lib/systemd/system/jobs.service": { "path": "/lib/systemd/system/jobs.service", "exists": true, "mode": "644", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/etc": { "path": "/etc", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/etc/systemd": { "path": "/etc/systemd", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/etc/systemd/system": { "path": "/etc/systemd/system", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/etc/systemd/system/app.service": { "path": "/etc/systemd/system/app.service", "exists": true, "mode": "644", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/etc/systemd/system/web.service": { "path": "/etc/systemd/system/web.service", "exists": true, "mode": "666", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/etc/systemd/system/gone.service": { "path": "/etc/systemd/system/gone.service", "exists": true, "mode": "644", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/etc/systemd/system/dyn.service": { "path": "/etc/systemd/system/dyn.service", "exists": true, "mode": "644", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/opt": { "path": "/opt", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/opt/app": { "path": "/opt/app", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/opt/app/bin": { "path": "/opt/app/bin", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/opt/app/bin/backup.sh": { "path": "/opt/app/bin/backup.sh", "exists": true, "mode": "755", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "regular file" },
+        "/opt/app/bin/server": { "path": "/opt/app/bin/server", "exists": true, "mode": "757", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/opt/app/bin/web": { "path": "/opt/app/bin/web", "exists": true, "mode": "777", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/opt/jobs": { "path": "/opt/jobs", "exists": true, "mode": "777", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/opt/jobs/rotate": { "path": "/opt/jobs/rotate", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/opt/jobs/worker": { "path": "/opt/jobs/worker", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "regular file" },
+        "/srv": { "path": "/srv", "exists": true, "mode": "777", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/srv/gone": { "path": "/srv/gone", "exists": false },
+        "/srv/gone/run.sh": { "path": "/srv/gone/run.sh", "exists": false },
+        "/srv/gone2": { "path": "/srv/gone2", "exists": false },
+        "/srv/gone2/daemon": { "path": "/srv/gone2/daemon", "exists": false },
+        "/srv/missing": { "path": "/srv/missing", "exists": false },
+        "/srv/missing/bin": { "path": "/srv/missing/bin", "exists": false },
+        "/tmp": { "path": "/tmp", "exists": true, "mode": "1777", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/home": { "path": "/home", "exists": true, "mode": "755", "uid": 0, "gid": 0, "owner": "root", "group": "root", "type": "directory" },
+        "/home/alice": { "path": "/home/alice", "exists": true, "mode": "750", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "directory" },
+        "/home/alice/job.sh": { "path": "/home/alice/job.sh", "exists": true, "mode": "755", "uid": 1000, "gid": 1000, "owner": "alice", "group": "alice", "type": "regular file" }
+      }
+    }
+  },
+  "runs": [
+    {
+      "perspective": "auto",
+      "expect": [
+        "PL-CRON-001|/etc/crontab -> /opt/app/bin/backup.sh",
+        "PL-CRON-002|/etc/cron.d/rotate -> /opt/jobs/rotate",
+        "PL-CRON-003|/etc/cron.d/stale -> /srv/gone/run.sh",
+        "PL-SVC-001|app.service -> /opt/app/bin/server",
+        "PL-SVC-002|/etc/systemd/system/web.service",
+        "PL-SVC-003|jobs.service -> /opt/jobs/worker",
+        "PL-SVC-004|gone.service -> /srv/gone2/daemon",
+        "PL-PATH-001|cron: /tmp",
+        "PL-PATH-002|environment: /srv/missing/bin",
+        "PL-PATH-003|root_login: .",
+        "PL-PATH-003|sudo: "
+      ]
+    }
+  ]
+}
