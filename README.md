@@ -5,8 +5,10 @@
 Defensive-first local privilege-escalation **audit** tool for Windows and Linux.
 
 `privscope` tells you what's misconfigured on a host, *why* it's exploitable, *how* to fix
-it, and *what changed* since the last run. It is strictly **detect-and-report**: it performs
-no exploitation and makes no changes to the target.
+it, and *what changed* since the last run. Its collector and analyzer are strictly
+**detect-and-report**: they perform no exploitation and change nothing on the target. An
+opt-in third piece, `privscope attack`, generates gated detection-test scripts for
+authorized IDS/IPS validation (see [REDTEAM.md](REDTEAM.md)).
 
 It is split in two so the part that runs on the host stays small, read-only and quiet, while
 all the judgment lives offline where it can be versioned, re-run and diffed.
