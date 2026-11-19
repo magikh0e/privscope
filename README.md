@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo-512.png" width="220" height="220" alt="A gunmetal badge reading PRIV SCOPE and PRIVESC AUDIT, with a violet scope reticle over a shield holding a staircase of padlocks, the top one open"></p>
+
 # privscope
 
 Defensive-first local privilege-escalation **audit** tool for Windows and Linux.
